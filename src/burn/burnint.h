@@ -9,6 +9,7 @@
 #include <stdlib.h>
 #include <string.h>
 #include <assert.h>
+#include <wchar.h>
 
 #if defined(__LIBRETRO__) && defined(_MSC_VER)
 #include <tchar.h>

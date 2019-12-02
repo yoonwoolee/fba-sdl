@@ -18,6 +18,7 @@
 #define FixBits 15
 #define Fixed(A) ( (int)((A) * (1 << FixBits)) )
 
+extern int bRunPause;
 
 #define SATURATE(Min, Max, Val) (  (Val) <= (Min) ? (Min) : (Val) > (Max) ? (Max) : (Val)  )
 

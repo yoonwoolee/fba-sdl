@@ -9,6 +9,11 @@
 #else
 #define ALIGN_DECL(n)   __declspec(align(n))
 #endif
+
+#ifdef mips
+#undef mips
+#endif
+
 namespace mips
 {
 using namespace std;
