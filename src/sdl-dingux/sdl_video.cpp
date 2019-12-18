@@ -947,7 +947,6 @@ static void Blitrf_320x240_to_320x240()
 	}
 }
 
-
 static void Blitr_320x224_to_320x240()
 {
 	// 320x224 rotate to 192x240
@@ -1277,6 +1276,7 @@ static void Blitrf_280x224_to_320x240()
 		p += 128;
 	}
 }
+
 static void Blitr_272x236_to_320x240()
 {
 	// 272x236 rotate to 208x240
@@ -1792,6 +1792,7 @@ static void Blitrf()
 		p += r_offset;
 	}
 }
+
 typedef struct
 {
 	int dst_w;
@@ -1862,30 +1863,35 @@ int VideoInit()
 		SDL_InitSubSystem(SDL_INIT_VIDEO);
 	}
 
-	screen = SDL_SetVideoMode(320, 240, 16, flags);
-	/*{
-		int i = 0; // 0 - 320x240, 1 - 400x240, 2 - 480x272
-		int surfacewidth, surfaceheight;
-		#define NUMOFVIDEOMODES 3
-		struct {
-			int x;
-			int y;
-		} vm[NUMOFVIDEOMODES] = {
-			{320, 240},
-			{400, 240},
-			{480, 272}
-		};
+#ifdef DEVICE_GCW0
+	int hwscale = options.hwscaling;
+	BurnDrvGetFullSize(&VideoBufferWidth, &VideoBufferHeight);
+	printf("w=%d h=%d\n",VideoBufferWidth, VideoBufferHeight);
 
-		// check 3 videomodes: 480x272, 400x240, 320x240
-		for(i = NUMOFVIDEOMODES-1; i >= 0; i--) {
-			if(SDL_VideoModeOK(vm[i].x, vm[i].y, 16, SDL_SWSURFACE) != 0) {
-				surfacewidth = vm[i].x;
-				surfaceheight = vm[i].y;
-				break;
+	if (hwscale > 0) {
+
+		FILE* aspect_ratio_file = fopen("/sys/devices/platform/jz-lcd.0/keep_aspect_ratio", "w");
+		if (aspect_ratio_file) {
+			if (hwscale == 1) { //Aspect
+				fwrite("1", 1, 1, aspect_ratio_file);
+			} else if (hwscale == 2) { //Fullscreen
+				fwrite("0", 1, 1, aspect_ratio_file);
 			}
+			fclose(aspect_ratio_file);
 		}
-		screen = SDL_SetVideoMode(surfacewidth, surfaceheight, 16, SDL_SWSURFACE);
-	}*/
+
+		if (options.rotate == 1 || options.rotate == 3) {
+			screen = SDL_SetVideoMode(VideoBufferHeight, VideoBufferWidth, 16, SDL_HWSURFACE | SDL_TRIPLEBUF);
+		} else {
+			screen = SDL_SetVideoMode(VideoBufferWidth, VideoBufferHeight, 16, SDL_HWSURFACE | SDL_TRIPLEBUF);
+		}
+
+	} else {
+#endif
+		screen = SDL_SetVideoMode(320, 240, 16, flags);
+#ifdef DEVICE_GCW0		
+	}
+#endif
 
 	if(!screen) {
 		printf("SDL_SetVideoMode screen not initialised.\n");
@@ -1898,109 +1904,158 @@ int VideoInit()
 	SDL_ShowCursor(SDL_DISABLE);
 	SDL_WM_SetCaption("Final Burn SDL", 0);
 
-	BurnDrvGetFullSize(&VideoBufferWidth, &VideoBufferHeight);
-	printf("w=%d h=%d\n",VideoBufferWidth, VideoBufferHeight);
-
 	nBurnBpp = 2;
 	BurnHighCol = myHighCol16;
 
 	BurnRecalcPal();
+
 	nBurnPitch = VideoBufferWidth * 2;
+
 	PhysicalBufferWidth = screen->w;
 	BurnVideoBuffer = (unsigned short *)malloc(VideoBufferWidth * VideoBufferHeight * 2);
 	memset(BurnVideoBuffer, 0, VideoBufferWidth * VideoBufferHeight * 2);
-	BurnerVideoTrans = Blit_320x240_to_320x240; // default blit
+#ifdef DEVICE_GCW0
+#endif
 
-	bRotate = options.rotate && (BurnDrvGetFlags() & BDF_ORIENTATION_VERTICAL);
-
-	// if source buffer < screen buffer then set general blitting routine with centering if needed
-	if(!bRotate && VideoBufferWidth <= screen->w && VideoBufferHeight <= screen->h) {
-		//rotate -180
-		if(options.rotate == 2 && (BurnDrvGetFlags() & BDF_ORIENTATION_FLIPPED)) {
-			BurnerVideoTrans = Blitf;
-			blit_fun_name = fun_names[1];
-		}
-		else {
-			BurnerVideoTrans = Blit;
-			blit_fun_name = fun_names[0];
-		}
-		
-	} else if(bRotate && VideoBufferWidth <= screen->h && VideoBufferHeight <= screen->w) {
-		
-			if(BurnDrvGetFlags() & BDF_ORIENTATION_FLIPPED) {
-				
-				//rotate -180
-				if(options.rotate == 2) {
-					BurnerVideoTrans = Blit;
-					blit_fun_name = fun_names[0];
-				}
-				else {
+#ifdef DEVICE_GCW0
+	if (hwscale > 0) {
+		bool bVert = (BurnDrvGetFlags() & BDF_ORIENTATION_VERTICAL) != 0;
+		bool bFlip = (BurnDrvGetFlags() & BDF_ORIENTATION_FLIPPED) != 0;
+		BurnerVideoTrans = Blit;
+		blit_fun_name = fun_names[0];
+		switch(options.rotate) {
+			case 1:
+				if (bFlip) {
 					BurnerVideoTrans = Blitrf;
 					blit_fun_name = fun_names[3];
+				} else {
+					BurnerVideoTrans = Blitrl;
+					blit_fun_name = fun_names[2];
 				}
-			}
-			else {
-				BurnerVideoTrans = Blitrl;
-				blit_fun_name = fun_names[2];
-			}
-		
-	} else {
-		// if source buffer is bigger than screen buffer then find an appropriate downscaler
-		for(int i = 0; blit_table[i].dst_w != 0; i++) {
-			if(blit_table[i].dst_w == screen->w && blit_table[i].dst_h == screen->h &&
-			blit_table[i].src_w == VideoBufferWidth && blit_table[i].src_h == VideoBufferHeight) {
-				if(bRotate && (BurnDrvGetFlags() & BDF_ORIENTATION_FLIPPED)) {
-					//rotate -180
-					if(options.rotate == 2) {
-						BurnerVideoTrans = blit_table[i].blit;
-						blit_fun_name = fun_names[4];
-					}
-					else {
-						BurnerVideoTrans = blit_table[i].blitrf;
-						blit_fun_name = fun_names[7];
-					}
+				break;
+			case 3:
+				if (!bFlip) {
+					BurnerVideoTrans = Blitrf;
+					blit_fun_name = fun_names[3];
+				} else {
+					BurnerVideoTrans = Blitrl;
+					blit_fun_name = fun_names[2];
 				}
-				else if (BurnDrvGetFlags() & BDF_ORIENTATION_FLIPPED) {
-					BurnerVideoTrans = blit_table[i].blitf;
-					blit_fun_name = fun_names[5];
-				}
-				else if (bRotate)
-					//rotate -180
-					if(options.rotate == 2) {
-						BurnerVideoTrans = blit_table[i].blitf;
-						blit_fun_name = fun_names[5];
+				break;
+			case 2:
+				if (bFlip) {
+					if (!bVert) {
+						BurnerVideoTrans = Blitf;
+						blit_fun_name = fun_names[1];
 					}
-					else {
-						BurnerVideoTrans = blit_table[i].blitr;
-						blit_fun_name = fun_names[6];
-					}
-				else {
-					//rotate -180
-					if(options.rotate == 2) {
-						BurnerVideoTrans = blit_table[i].blitf;
-						blit_fun_name = fun_names[5];
-					}
-					else {
-						BurnerVideoTrans = blit_table[i].blit;
-						blit_fun_name = fun_names[4];
+				} else {
+					if (bVert) {
+						BurnerVideoTrans = Blitf;
+						blit_fun_name = fun_names[1];
 					}
 				}
 				break;
+		}
+		p_offset = 0;
+		r_offset = 0;
+		q_offset = VideoBufferWidth*VideoBufferHeight-1;
+	} else {
+#endif
+		BurnerVideoTrans = Blit_320x240_to_320x240; // default blit
+		blit_fun_name = fun_names[4];
+		bRotate = options.rotate && (BurnDrvGetFlags() & BDF_ORIENTATION_VERTICAL);
+
+		// if source buffer < screen buffer then set general blitting routine with centering if needed
+		if(!bRotate && VideoBufferWidth <= screen->w && VideoBufferHeight <= screen->h) {
+			//rotate -180
+			if(options.rotate == 2 && (BurnDrvGetFlags() & BDF_ORIENTATION_FLIPPED)) {
+				BurnerVideoTrans = Blitf;
+				blit_fun_name = fun_names[1];
+			}
+			else {
+				BurnerVideoTrans = Blit;
+				blit_fun_name = fun_names[0];
+			}
+			
+		} else if(bRotate && VideoBufferWidth <= screen->h && VideoBufferHeight <= screen->w) {
+			
+				if(BurnDrvGetFlags() & BDF_ORIENTATION_FLIPPED) {
+					
+					//rotate -180
+					if(options.rotate == 2) {
+						BurnerVideoTrans = Blit;
+						blit_fun_name = fun_names[0];
+					}
+					else {
+						BurnerVideoTrans = Blitrf;
+						blit_fun_name = fun_names[3];
+					}
+				}
+				else {
+					BurnerVideoTrans = Blitrl;
+					blit_fun_name = fun_names[2];
+				}
+			
+		} else {
+			// if source buffer is bigger than screen buffer then find an appropriate downscaler
+			for(int i = 0; blit_table[i].dst_w != 0; i++) {
+				if(blit_table[i].dst_w == screen->w && blit_table[i].dst_h == screen->h &&
+				blit_table[i].src_w == VideoBufferWidth && blit_table[i].src_h == VideoBufferHeight) {
+					if(bRotate && (BurnDrvGetFlags() & BDF_ORIENTATION_FLIPPED)) {
+						//rotate -180
+						if(options.rotate == 2) {
+							BurnerVideoTrans = blit_table[i].blit;
+							blit_fun_name = fun_names[4];
+						}
+						else {
+							BurnerVideoTrans = blit_table[i].blitrf;
+							blit_fun_name = fun_names[7];
+						}
+					}
+					else if (BurnDrvGetFlags() & BDF_ORIENTATION_FLIPPED) {
+						BurnerVideoTrans = blit_table[i].blitf;
+						blit_fun_name = fun_names[5];
+					}
+					else if (bRotate)
+						//rotate -180
+						if(options.rotate == 2) {
+							BurnerVideoTrans = blit_table[i].blitf;
+							blit_fun_name = fun_names[5];
+						}
+						else {
+							BurnerVideoTrans = blit_table[i].blitr;
+							blit_fun_name = fun_names[6];
+						}
+					else {
+						//rotate -180
+						if(options.rotate == 2) {
+							BurnerVideoTrans = blit_table[i].blitf;
+							blit_fun_name = fun_names[5];
+						}
+						else {
+							BurnerVideoTrans = blit_table[i].blit;
+							blit_fun_name = fun_names[4];
+						}
+					}
+					break;
+				}
+			}
+			
+		}
+
+		if (BurnerVideoTrans == Blit || BurnerVideoTrans == Blitf || BurnerVideoTrans == Blitrll || BurnerVideoTrans == Blitrl || BurnerVideoTrans == Blitrf) {
+			if (bRotate && (options.rotate == 1 || options.rotate == 3) ) {
+				p_offset = ((screen->h - VideoBufferWidth)/2)*screen->w;
+				r_offset = screen->w - VideoBufferHeight;
+			}
+			else {
+				p_offset = (screen->w - VideoBufferWidth)/2 + (screen->h - VideoBufferHeight)/2*screen->w;
+				q_offset = VideoBufferWidth*VideoBufferHeight-1;
 			}
 		}
-		
+#ifdef DEVICE_GCW0
 	}
-
-	if (BurnerVideoTrans == Blit || BurnerVideoTrans == Blitf || BurnerVideoTrans == Blitrll || BurnerVideoTrans == Blitrl || BurnerVideoTrans == Blitrf) {
-		if (bRotate && (options.rotate == 1 || options.rotate == 3) ) {
-			p_offset = ((screen->h - VideoBufferWidth)/2)*screen->w;
-			r_offset = screen->w - VideoBufferHeight;
-		}
-		else {
-			p_offset = (screen->w - VideoBufferWidth)/2 + (screen->h - VideoBufferHeight)/2*screen->w;
-			q_offset = VideoBufferWidth*VideoBufferHeight-1;
-		}
-	}
+#endif
 
 	return 0;
 }
@@ -2025,4 +2080,23 @@ void VideoClear()
 void VideoFlip()
 {
 	SDL_Flip(screen);
+}
+
+int VideoInitForce320x240()
+{
+	// Initialize SDL
+	if(!(SDL_WasInit(SDL_INIT_VIDEO) & SDL_INIT_VIDEO)) {
+		SDL_InitSubSystem(SDL_INIT_VIDEO);
+	}
+
+	screen = SDL_SetVideoMode(320, 240, 16, SDL_SWSURFACE);
+	SDL_ShowCursor(SDL_DISABLE);
+
+	if(!screen) {
+		printf("SDL_SetVideoMode screen not initialised.\n");
+	} else {
+		printf("SDL_SetVideoMode successful.\n");
+	}
+
+	return 0;
 }

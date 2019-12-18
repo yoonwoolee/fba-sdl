@@ -1,9 +1,10 @@
 [Desktop Entry]
-Name=FBA
+Name=FBA-Test
 Comment=Arcade machine emulator
 Exec=fbasdl.dge
 Terminal=false
 Type=Application
 StartupNotify=true
-Icon=fbasdl_icon
+Icon=fba_icon
 Categories=emulators;
+X-OD-NeedsDownscaling=true
