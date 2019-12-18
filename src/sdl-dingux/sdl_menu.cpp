@@ -208,7 +208,7 @@ void ShowMenuItem(int x, int y, MENUITEM *m, int fg_color)
 void ShowHeader()
 {
 	DrawString("Press B to return to game", COLOR_HELP_TEXT, COLOR_BG, 56, 220);
-	DrawString("FinalBurn Alpha for OpenDingux", COLOR_HELP_TEXT, COLOR_BG, 44, 2);
+	DrawString("FinalBurn Alpha for OpenDingux/RG350", COLOR_HELP_TEXT, COLOR_BG, 16, 2);
 	DrawString("Based on FBA " VERSION " (c) Team FB Alpha", COLOR_HELP_TEXT, COLOR_BG, 0, 12);
 }
 

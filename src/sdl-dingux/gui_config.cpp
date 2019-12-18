@@ -85,8 +85,8 @@ void gui_write_cfg()
 
 	sprintf(filename, "%s/frontend.cfg", szAppHomePath);
 
-	printf("Writing frontend.cfg\n");
-	fp = fopen(filename, "w");
+	printf("Writing %s\n",filename);
+	fp = fopen(filename, "w+");
 
 	fputs("# FBA frontend options\n",fp);
 	fputs("\n",fp);

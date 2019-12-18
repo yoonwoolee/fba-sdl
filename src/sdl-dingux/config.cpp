@@ -153,9 +153,10 @@ int ConfigAppSave()
 void ConfigGameDefault()
 {
 	if (ConfigGameLoadDefault()) {
+		printf("ConfigGameLoadDefault true\n");
 		return;
 	}
-
+	printf("Initialize default configuration options\n");
 	// Initialize configuration options
 	options.sound = 2;
 	options.samplerate = 2;		// 0 - 11025, 1 - 16000, 2 - 22050, 3 - 32000
@@ -263,6 +264,7 @@ int ConfigGameLoad()
 	
 	if(!(f = fopen(cfgname,"r"))) {
 		// set default values and exit
+		printf("no found config file:%s\n", cfgname);
 		ConfigGameDefault();
 		return 0;
 	}
@@ -281,6 +283,7 @@ int ConfigGameLoadDefault()
 
 	sprintf((char*)cfgname, "%s/default.cfg", szAppHomePath);
 	if(!(f = fopen(cfgname,"r"))) {
+		printf("no found config file:%s\n", cfgname);
 		return 0;
 	}
 
@@ -346,7 +349,7 @@ int ConfigGameSave()
 
 	sprintf((char*)cfgname, "%s/%s.cfg", szAppConfigPath, BurnDrvGetTextA(DRV_NAME));
 	fp = fopen(cfgname, "w");
-
+	printf("ConfigGameSave:%s\n",cfgname);
 	int ret = ConfigGameSave(fp);
 
 	fclose(fp);
@@ -360,7 +363,7 @@ int ConfigGameSaveDefault()
 
 	sprintf((char*)cfgname, "%s/default.cfg", szAppHomePath);
 	fp = fopen(cfgname, "w");
-	
+	printf("ConfigGameSaveDefault:%s\n",cfgname);
 	int ret = ConfigGameSave(fp);
 	
 	fclose(fp);
@@ -380,6 +383,7 @@ void ConfigGameDelete()
 		if (strlen(file->d_name) > 4 && strncmp(".cfg", file->d_name + strlen(file->d_name) - 4, 4) == 0) {
 			sprintf((char*)cfgname, "%s/%s", szAppConfigPath, file->d_name);
 			remove(cfgname);
+			printf("ConfigGameDelete:%s\n",cfgname);
 		}
 	}
 
@@ -390,4 +394,5 @@ void ConfigGameDefaultDelete() {
 	sprintf((char*)cfgname, "%s/default.cfg", szAppHomePath);
 
 	remove(cfgname);
+	printf("ConfigGameDefaultDelete:%s\n",cfgname);
 }

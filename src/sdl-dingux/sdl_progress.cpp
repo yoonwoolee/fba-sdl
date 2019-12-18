@@ -90,7 +90,7 @@ int ProgressCreate()
 	if(!load_screen)
 		load_screen = SDL_CreateRGBSurface(SDL_SWSURFACE, fwidth, fheight, 16, 0, 0, 0, 0);
 
-	DrawString("Finalburn Alpha for OpenDingux (v " VERSION ")", (uint16 *)load_screen->pixels, 10, 20, fwidth);
+	DrawString("Finalburn Alpha for OpenDingux/RG350 (v " VERSION ")", (uint16 *)load_screen->pixels, 10, 20, fwidth);
 	DrawString("Based on FinalBurnAlpha", (uint16 *)load_screen->pixels, 10, 35, fwidth);
 	DrawString("Now loading ... ", (uint16 *)load_screen->pixels, 10, 105, fwidth);
 	show_rom_loading_text("Open Zip", 0, 0);

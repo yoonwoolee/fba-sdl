@@ -31,7 +31,7 @@ struct DIPInfo{
 // Mapping of PC inputs to game inputs
 struct GameInput GameInput[4][MAX_INPUT_inp];
 unsigned int nGameInpCount = 0;
-static bool bInputOk = false;
+bool bInputOk = false;
 unsigned char *ServiceDip = 0;
 unsigned char *P1Start = 0;
 unsigned char *P2Start = 0;

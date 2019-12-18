@@ -65,7 +65,7 @@ unsigned char P1P2Start = 0;
 
 // external functions
 void ChangeFrameskip(); // run.cpp
-
+static int keystick = 0;
 static int keypad = 0; // redefinable keys
 static int keypc = 0;  // non-redefinabe keys
 
@@ -83,7 +83,6 @@ typedef struct
 
 AUTOFIRE_STATE autofire_state[6];
 int autofire_count;
-
 void sdl_input_read(bool process_autofire) // called from do_keypad()
 {
 	SDL_Event event;
@@ -110,6 +109,104 @@ void sdl_input_read(bool process_autofire) // called from do_keypad()
 				break;
 			}
 		}
+		//process joystick
+		if (joyCount > 0) {
+			for (int i = 0; i < joyCount; i++) {
+				Sint16 leftX = SDL_JoystickGetAxis(joys[i],0);
+				Sint16 leftY = SDL_JoystickGetAxis(joys[i],1);
+				Sint16 rightX = 0;
+				Sint16 rightY = 0;
+				if(SDL_JoystickNumAxes(joys[i])>2) {
+					rightX = SDL_JoystickGetAxis(joys[i],2);
+					rightY = SDL_JoystickGetAxis(joys[i],3);
+				}
+
+				if (leftX < -3200 || rightX < -3200)
+				{
+					keystick |= KEYPAD_LEFT;
+					keypad |= KEYPAD_LEFT;
+				}
+				else if (leftX > 3200 || rightX > 3200)
+				{
+					
+					keystick |= KEYPAD_RIGHT;
+					keypad |= KEYPAD_RIGHT;
+				}
+				else {
+					if(keystick & KEYPAD_LEFT ) {
+						keystick &= ~KEYPAD_LEFT;
+						keypad &= ~KEYPAD_LEFT;
+					}
+					else if(keystick & KEYPAD_RIGHT ) {
+						keystick &= ~KEYPAD_RIGHT;
+						keypad &= ~KEYPAD_RIGHT;
+					}
+				}
+
+				if (leftY < -3200 || rightY < -3200)
+				{
+					keystick |= KEYPAD_UP;
+					keypad |= KEYPAD_UP;
+				}
+				else if (leftY > 3200 || rightY > 3200)
+				{
+					keystick |= KEYPAD_DOWN;	
+					keypad |= KEYPAD_DOWN;
+				}
+				else {
+					if(keystick & KEYPAD_UP ) {
+						keystick &= ~KEYPAD_UP;
+						keypad &= ~KEYPAD_UP;
+					}
+					else if(keystick & KEYPAD_DOWN ) {
+						keystick &= ~KEYPAD_DOWN;
+						keypad &= ~KEYPAD_DOWN;
+					}
+				}
+				
+			}
+		}
+		// if (event.type == SDL_JOYAXISMOTION) { /* Handle Joystick Motion */
+		// 	if ((event.jaxis.value < -3200) || (event.jaxis.value > 3200))
+		// 	{
+		// 		/* code goes here */
+		// 		if (event.jaxis.axis == 0 || event.jaxis.axis == 2)
+		// 		{
+		// 			/* Left-right movement code goes here */
+		// 			//printf(" Left-right\n");
+		// 			if (event.jaxis.value < -3200)
+		// 			{
+		// 				keypad |= KEYPAD_LEFT;
+		// 			}
+		// 			else if (event.jaxis.value > 3200)
+		// 			{
+		// 				keypad |= KEYPAD_RIGHT;
+		// 			}
+		// 			else {
+		// 				keypad &= ~KEYPAD_LEFT;
+		// 				keypad &= ~KEYPAD_RIGHT;
+		// 			}
+		// 		}
+		// 		if (event.jaxis.axis == 1 || event.jaxis.axis == 3)
+		// 		{
+		// 			/* Up-Down movement code goes here */
+		// 			//printf("Up-Down\n");
+		// 			if (event.jaxis.value < -3200)
+		// 			{
+		// 				keypad |= KEYPAD_UP;
+		// 			}
+		// 			else if (event.jaxis.value > 3200)
+		// 			{
+		// 				keypad |= KEYPAD_DOWN;
+		// 			}
+		// 			else {
+		// 				keypad &= ~KEYPAD_UP;
+		// 				keypad &= ~KEYPAD_DOWN;
+		// 			}
+		// 		}
+		// 	}
+		// }
+		// else 
 		if (event.type == SDL_KEYUP) {
 			// FBA keypresses
 			if (event.key.keysym.sym == keymap.up) keypad &= ~KEYPAD_UP;
@@ -202,10 +299,25 @@ void do_keypad()
 	sdl_input_read(true);
 
 	// process redefinable keypresses
-	if (keypad & KEYPAD_UP) FBA_KEYPAD[0] |= bVert ? KEYPAD_LEFT : KEYPAD_UP;
-	if (keypad & KEYPAD_DOWN) FBA_KEYPAD[0] |= bVert ? KEYPAD_RIGHT : KEYPAD_DOWN;
-	if (keypad & KEYPAD_LEFT) FBA_KEYPAD[0] |= bVert ? KEYPAD_DOWN : KEYPAD_LEFT;
-	if (keypad & KEYPAD_RIGHT) FBA_KEYPAD[0] |= bVert ? KEYPAD_UP : KEYPAD_RIGHT;
+	
+	if(options.rotate == 1 ) { //-90
+		if (keypad & KEYPAD_UP) FBA_KEYPAD[0] |= bVert ? KEYPAD_LEFT : KEYPAD_UP;
+		if (keypad & KEYPAD_DOWN) FBA_KEYPAD[0] |= bVert ? KEYPAD_RIGHT : KEYPAD_DOWN;
+		if (keypad & KEYPAD_LEFT) FBA_KEYPAD[0] |= bVert ? KEYPAD_DOWN : KEYPAD_LEFT;
+		if (keypad & KEYPAD_RIGHT) FBA_KEYPAD[0] |= bVert ? KEYPAD_UP : KEYPAD_RIGHT;
+	}
+	else if(options.rotate == 2) {//-180
+		if (keypad & KEYPAD_LEFT) FBA_KEYPAD[0] |=  KEYPAD_UP;
+		if (keypad & KEYPAD_RIGHT) FBA_KEYPAD[0] |= KEYPAD_DOWN;
+		if (keypad & KEYPAD_DOWN) FBA_KEYPAD[0] |=  KEYPAD_LEFT;
+		if (keypad & KEYPAD_UP) FBA_KEYPAD[0] |=  KEYPAD_RIGHT;
+	}
+	else {
+		if (keypad & KEYPAD_UP) FBA_KEYPAD[0] |= bVert ? KEYPAD_LEFT : KEYPAD_UP;
+		if (keypad & KEYPAD_DOWN) FBA_KEYPAD[0] |= bVert ? KEYPAD_RIGHT : KEYPAD_DOWN;
+		if (keypad & KEYPAD_LEFT) FBA_KEYPAD[0] |= bVert ? KEYPAD_DOWN : KEYPAD_LEFT;
+		if (keypad & KEYPAD_RIGHT) FBA_KEYPAD[0] |= bVert ? KEYPAD_UP : KEYPAD_RIGHT;
+	}
 
 	if (keypad & KEYPAD_COIN) FBA_KEYPAD[0] |= KEYPAD_COIN;
 	if (keypad & KEYPAD_START) FBA_KEYPAD[0] |= KEYPAD_START;

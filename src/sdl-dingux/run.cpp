@@ -9,14 +9,15 @@
 #include "sdl_run.h"
 #include "sdl_video.h"
 #include "sdl_input.h"
-
+extern char* blit_fun_name;
 extern unsigned int FBA_KEYPAD[4]; // sdlinput.cpp
-
+extern SDL_Surface *screen; //sdl_video.cpp//
 bool bShowFPS = false;
 int bRunPause = 0;
 
-int InpMake(unsigned int[]);
-
+extern int InpMake(unsigned int[]);
+extern bool bInputOk;
+extern bool bRotate;
 void VideoTrans();
 
 int RunReset()
@@ -52,10 +53,13 @@ int RunOneFrame(bool bDraw, int fps)
 			if (bShowFPS)
 			{
 				char buf[11];
+				char screenInfo[200];
 				int x;
-				sprintf(buf, "FPS: %2d/%2d", fps,(nBurnFPS/100));
+				sprintf(buf, "FPS:%2d/%2d", fps,(nBurnFPS/100));
+				sprintf(screenInfo, "screen:%d,%d game:%d,%d %s %s",screen->w,screen->h,VideoBufferWidth,VideoBufferHeight,blit_fun_name,bRotate?"r":"");
 				DrawRect((uint16 *) (unsigned short *) &VideoBuffer[0],0, 0, 60, 9, 0,PhysicalBufferWidth);
 				DrawString (buf, (unsigned short *) &VideoBuffer[0], 0, 0,PhysicalBufferWidth);
+				DrawString (screenInfo, (unsigned short *) &VideoBuffer[0], 64, 0,PhysicalBufferWidth);
 			}
 
 			VideoFlip();

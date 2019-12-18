@@ -85,7 +85,7 @@ static char *abreviation_cf[10][7]={
 	{"Off","LIBAO","SDL","SDL old","","",""},
 	{"11025", "16000", "22050", "32000", "44100", "", ""},
 	{"No","Yes","","","","",""},
-	{"No","Yes","","","","",""}
+	{"No","-90","-180","-270","","",""}
 };
 
 void load_lastsel();
@@ -303,7 +303,7 @@ char ss_prg_credit(void)
 
 	put_string("CREDIT", 142, CREDIT_Y + 8, BLANC, credit);
 	put_string("Final Burn Alpha v" VERSION, CREDIT_X + 8, CREDIT_Y + 24, BLEU, credit);
-	put_string("for OpenDingux", CREDIT_X + 48, CREDIT_Y + 34, BLEU, credit);
+	put_string("for OpenDingux/RG350", CREDIT_X + 28, CREDIT_Y + 34, BLEU, credit);
 	put_string("Frontend is based on Capex", CREDIT_X + 8, CREDIT_Y + 54, VERT, credit);
 	put_string("by JyCet and Juanvvc", CREDIT_X + 32, CREDIT_Y + 64, VERT, credit);
 	put_string("Skin by HiBan", CREDIT_X + 56, CREDIT_Y + 88, VERT, credit);
@@ -1013,7 +1013,10 @@ void ss_prg_options(int first, int last)
 							if(options.samplerate < 0) options.samplerate = 4;
 							break;
 						case OPTION_GUI_DEF_RUN_ROTATE:
-							options.rotate ^= 1;
+							options.rotate --;// ^= 1;
+							if(options.rotate<0) {
+								options.rotate = 0;
+							}
 							break;
 						case OPTION_GUI_DEF_RUN_VSYNC:
 							options.vsync ^= 1;
@@ -1112,7 +1115,10 @@ void ss_prg_options(int first, int last)
 							if(options.samplerate >= 5) options.samplerate = 0;
 							break;
 						case OPTION_GUI_DEF_RUN_ROTATE:
-							options.rotate ^= 1;
+							options.rotate ++;// ^= 1;
+							if(options.rotate>3) {
+								options.rotate = 3;
+							}
 							break;
 						case OPTION_GUI_DEF_RUN_VSYNC:
 							options.vsync ^= 1;
@@ -1365,7 +1371,10 @@ void ss_prog_run(void)
 							if(options.samplerate < 0) options.samplerate = 4;
 							break;
 						case OPTION_FBA_ROTATE:
-							options.rotate ^= 1;
+							options.rotate --;// ^= 1;
+							if(options.rotate<0) {
+								options.rotate = 0;
+							}
 							break;
 						case OPTION_FBA_VSYNC:
 							options.vsync ^= 1;
@@ -1402,7 +1411,10 @@ void ss_prog_run(void)
 							if(options.samplerate >= 5) options.samplerate = 0;
 							break;
 						case OPTION_FBA_ROTATE:
-							options.rotate ^= 1;
+							options.rotate ++;// ^= 1;
+							if(options.rotate>3) {
+								options.rotate = 3;
+							}
 							break;
 						case OPTION_FBA_VSYNC:
 							options.vsync ^= 1;
