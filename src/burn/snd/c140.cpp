@@ -178,7 +178,7 @@ void c140_init(INT32 clock, INT32 devtype, UINT8 *c140_rom)
 	memset(m_mixer_buffer_left, 0, 2 * sizeof(INT16) * m_sample_rate);
 
 	// for resampling
-	nSampleSize = (UINT32)m_sample_rate * (1 << 16) / nBurnSoundRate;
+	nSampleSize = nBurnSoundRate ? ((UINT32)m_sample_rate * (1 << 16) / nBurnSoundRate) : 0U;
 	nFractionalPosition = 0;
 	nPosition = 0;
 }

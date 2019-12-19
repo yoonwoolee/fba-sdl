@@ -469,7 +469,7 @@ static void sample_render(INT16 *buffer, INT32 nLen)
 		return;
 	}
 
-	INT32 step = (8000 << 16) / nBurnSoundRate; // 8khz
+	INT32 step = nBurnSoundRate ? ((8000 << 16) / nBurnSoundRate) : 0; // 8khz
 	INT32 pos = 0;
 	INT16 *rom = DrvSamplesExp + sample_start;
 

@@ -494,7 +494,7 @@ static void cclimber_render(INT16 *buffer, INT32 nLen)
 		return;
 	}
 
-	INT32 step = (sample_freq << 16) / nBurnSoundRate;
+	INT32 step = nBurnSoundRate ? ((sample_freq << 16) / nBurnSoundRate) : 0;
 	INT32 pos = 0;
 	INT16 *rom = samplebuf;
 

@@ -1504,7 +1504,7 @@ static void kageki_sample_render(INT16 *pSoundBuf, INT32 nLength)
 	if (kageki_sample_select == -1) return;
 
 	INT32 offset = kageki_sample_pos;
-	INT32 step = (7000 << 16) / nBurnSoundRate;
+	INT32 step = nBurnSoundRate ? ((7000 << 16) / nBurnSoundRate) : 0;
 
 	INT32 size = kageki_sample_size[kageki_sample_select];
 	INT16 *ptr = kageki_sample_data[kageki_sample_select];

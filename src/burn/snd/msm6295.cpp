@@ -319,7 +319,7 @@ static void MSM6295Render_Cubic(INT32 nChip, INT32* pLeftBuf, INT32 *pRightBuf, 
 												MSM6295ChannelData[nChip][nChannel][pChannelInfo->nBufPos - 1]);
 			} else {
 				// Ramp channel output to 0
-				if (pChannelInfo->nOutput != 0) {
+				if (pChannelInfo->nOutput != 0 && nBurnSoundRate > 0) {
 					INT32 nRamp = 2048 * 256 * 256 / nBurnSoundRate;
 					if (pChannelInfo->nOutput > 0) {
 						if (pChannelInfo->nOutput > nRamp) {

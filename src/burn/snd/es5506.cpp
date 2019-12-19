@@ -1036,7 +1036,7 @@ void ES5506Scan(INT32 nAction, INT32* pnMin)
 	if (nAction & ACB_WRITE) {
 		nFractionalPosition = 0;
 		nPosition = 0;
-		nSampleSize = (UINT32)chip->sample_rate * (1 << 16) / nBurnSoundRate;
+		nSampleSize = nBurnSoundRate ? ((UINT32)chip->sample_rate * (1 << 16) / nBurnSoundRate) : 0U;
 		memset(chip->scratch, 0, 2 * MAX_SAMPLE_CHUNK * sizeof(INT32));
 	}
 }
@@ -1204,7 +1204,7 @@ ES5506_INLINE void es5506_reg_write_low(es5506_voice *voice, UINT32 offset, UINT
 			chip->active_voices = data & 0x1f;
 			chip->sample_rate = chip->master_clock / (16 * (chip->active_voices + 1));
 
-			nSampleSize = (UINT32)chip->sample_rate * (1 << 16) / nBurnSoundRate;
+			nSampleSize = nBurnSoundRate ? ((UINT32)chip->sample_rate * (1 << 16) / nBurnSoundRate) : 0U;
 
 			if (LOG_COMMANDS && eslog)
 				fprintf(eslog, "active voices=%d, sample_rate=%d\n", chip->active_voices, chip->sample_rate);
@@ -1793,7 +1793,7 @@ ES5506_INLINE void es5505_reg_write_low(es5506_voice *voice, UINT32 offset, UINT
 				chip->active_voices = data & 0x1f;
 				chip->sample_rate = chip->master_clock / (16 * (chip->active_voices + 1));
 
-				nSampleSize = (UINT32)chip->sample_rate * (1 << 16) / nBurnSoundRate;
+				nSampleSize = nBurnSoundRate ? ((UINT32)chip->sample_rate * (1 << 16) / nBurnSoundRate) : 0U;
 
 //				if (LOG_COMMANDS && eslog)
 //					fprintf(eslog, "active voices=%d, sample_rate=%d\n", chip->active_voices, chip->sample_rate);
@@ -1900,7 +1900,7 @@ ES5506_INLINE void es5505_reg_write_high(es5506_voice *voice, UINT32 offset, UIN
 				chip->active_voices = data & 0x1f;
 				chip->sample_rate = chip->master_clock / (16 * (chip->active_voices + 1));
 
-				nSampleSize = (UINT32)chip->sample_rate * (1 << 16) / nBurnSoundRate;
+				nSampleSize = nBurnSoundRate ? ((UINT32)chip->sample_rate * (1 << 16) / nBurnSoundRate) : 0U;
 
 //				if (LOG_COMMANDS && eslog)
 //					fprintf(eslog, "active voices=%d, sample_rate=%d\n", chip->active_voices, chip->sample_rate);
@@ -1945,7 +1945,7 @@ ES5506_INLINE void es5505_reg_write_test(UINT32 offset, UINT16 data)
 				chip->active_voices = data & 0x1f;
 				chip->sample_rate = chip->master_clock / (16 * (chip->active_voices + 1));
 
-				nSampleSize = (UINT32)chip->sample_rate * (1 << 16) / nBurnSoundRate;
+				nSampleSize = nBurnSoundRate ? ((UINT32)chip->sample_rate * (1 << 16) / nBurnSoundRate) : 0U;
 
 //				if (LOG_COMMANDS && eslog)
 //					fprintf(eslog, "active voices=%d, sample_rate=%d\n", chip->active_voices, chip->sample_rate);

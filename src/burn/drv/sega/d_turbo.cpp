@@ -660,7 +660,7 @@ static void turbo_update_samples()
 		BurnSamplePlay(7);
 	}
 	
-	if (BurnSampleGetStatus(7)) {
+	if (BurnSampleGetStatus(7) && nBurnSoundRate > 0) {
 		// my math sucks, there might be a better way to do this:  -dink
 		INT32 percentyderp = (((nBurnSoundRate * ((turbo_accel & 0x3f) / 5.25 + 1)) - nBurnSoundRate) / nBurnSoundRate * 100) + 100;
 		BurnSampleSetPlaybackRate(7, percentyderp);

@@ -1936,7 +1936,7 @@ void tms5220_set_frequency(UINT32 frequency)
         UpdateStream(SyncInternal());
 
         our_freq = frequency/80;
-        nSampleSize = (UINT32)our_freq * (1 << 16) / nBurnSoundRate;
+        nSampleSize = nBurnSoundRate ? ((UINT32)our_freq * (1 << 16) / nBurnSoundRate) : 0U;
     }
 }
 
