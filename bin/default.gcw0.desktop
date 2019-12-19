@@ -1,5 +1,5 @@
 [Desktop Entry]
-Name=FBA-Test
+Name=FBA-RG350
 Comment=Arcade machine emulator
 Exec=fbasdl.dge
 Terminal=false

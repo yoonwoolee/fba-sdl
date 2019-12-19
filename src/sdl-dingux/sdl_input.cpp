@@ -55,12 +55,18 @@
 #define BUTTON_QSAVE    0x4000
 #define BUTTON_QLOAD    0x8000
 #define BUTTON_MENU     0x10000
+#define BUTTON_L2       0x20000
+#define BUTTON_R2       0x40000
+#define BUTTON_L3       0x80000
+#define BUTTON_R3       0x100000
 
 char joyCount = 0;
 SDL_Joystick *joys[4];
 
 unsigned int FBA_KEYPAD[4];
+unsigned char DiagRequest = 0;
 unsigned char ServiceRequest = 0;
+unsigned char TestRequest = 0;
 unsigned char P1P2Start = 0;
 
 // external functions
@@ -83,11 +89,14 @@ typedef struct
 
 AUTOFIRE_STATE autofire_state[6];
 int autofire_count;
+int power_pressed = 0;
 void sdl_input_read(bool process_autofire) // called from do_keypad()
 {
 	SDL_Event event;
 
 	int auto_it = process_autofire ? autofire_count : 0;
+
+	power_pressed = 0;
 	while(auto_it > 0 || SDL_PollEvent(&event)) {
 		// process autofire
 		if (auto_it > 0) {
@@ -232,6 +241,10 @@ void sdl_input_read(bool process_autofire) // called from do_keypad()
 				else if (event.key.keysym.sym == SDLK_BACKSPACE) keypc &= ~BUTTON_SR;
 				else if (event.key.keysym.sym == SDLK_ESCAPE) keypc &= ~BUTTON_SELECT;
 				else if (event.key.keysym.sym == SDLK_RETURN) keypc &= ~BUTTON_START;
+				else if (event.key.keysym.sym == SDLK_PAGEUP) keypc &= ~BUTTON_L2;
+				else if (event.key.keysym.sym == SDLK_PAGEDOWN) keypc &= ~BUTTON_R2;
+				else if (event.key.keysym.sym == SDLK_KP_DIVIDE) keypc &= ~BUTTON_L3;
+				else if (event.key.keysym.sym == SDLK_KP_PERIOD) keypc &= ~BUTTON_R3;
 				else if (event.key.keysym.sym == SDLK_q) keypc &= ~BUTTON_QT;
 				else if (event.key.keysym.sym == SDLK_p) keypc &= ~BUTTON_PAUSE;
 				else if (event.key.keysym.sym == SDLK_s) keypc &= ~BUTTON_QSAVE;
@@ -263,6 +276,11 @@ void sdl_input_read(bool process_autofire) // called from do_keypad()
 				else if (event.key.keysym.sym == SDLK_BACKSPACE) keypc |= BUTTON_SR;
 				else if (event.key.keysym.sym == SDLK_ESCAPE) keypc |= BUTTON_SELECT;
 				else if (event.key.keysym.sym == SDLK_RETURN) keypc |= BUTTON_START;
+				else if (event.key.keysym.sym == SDLK_PAGEUP) keypc |= BUTTON_L2;
+				else if (event.key.keysym.sym == SDLK_PAGEDOWN) keypc |= BUTTON_R2;
+				else if (event.key.keysym.sym == SDLK_KP_DIVIDE) keypc |= BUTTON_L3;
+				else if (event.key.keysym.sym == SDLK_KP_PERIOD) keypc |= BUTTON_R3;
+				else if (event.key.keysym.sym == SDLK_HOME) power_pressed = 1;
 				else if (event.key.keysym.sym == SDLK_q) keypc |= BUTTON_QT;
 				else if (event.key.keysym.sym == SDLK_p) keypc |= BUTTON_PAUSE;
 				else if (event.key.keysym.sym == SDLK_s) keypc |= BUTTON_QSAVE;
@@ -284,7 +302,9 @@ void do_keypad()
 	FBA_KEYPAD[1] = 0;
 	FBA_KEYPAD[2] = 0;
 	FBA_KEYPAD[3] = 0;
+	DiagRequest = 0;
 	ServiceRequest = 0;
+	TestRequest = 0;
 	P1P2Start = 0;
 
 	sdl_input_read(false);
@@ -376,9 +396,11 @@ void do_keypad()
 			SndPause(1);
 			gui_Run();
 			SndPause(0);
-		} else if (keypc & BUTTON_SELECT) ServiceRequest = 1;
+		} else if (keypc & BUTTON_SELECT) DiagRequest = 1;
 	}
 	else if ((keypc & BUTTON_START) && (keypc & BUTTON_SELECT)) P1P2Start = 1;
+	else if (keypc & BUTTON_L2) ServiceRequest = 1;
+	else if (keypc & BUTTON_R2) TestRequest = 1;
 }
 
 void sdl_input_init()

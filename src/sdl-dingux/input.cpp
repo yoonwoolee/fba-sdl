@@ -4,7 +4,9 @@
 
 extern SDL_Joystick *joys[4];
 extern char joyCount;
+extern unsigned char DiagRequest;
 extern unsigned char ServiceRequest;
+extern unsigned char TestRequest;
 extern unsigned char P1P2Start;
 
 int nAnalogSpeed=0x0100;
@@ -32,7 +34,9 @@ struct DIPInfo{
 struct GameInput GameInput[4][MAX_INPUT_inp];
 unsigned int nGameInpCount = 0;
 bool bInputOk = false;
+unsigned char *DiagDip = 0;
 unsigned char *ServiceDip = 0;
+unsigned char *TestDip = 0;
 unsigned char *P1Start = 0;
 unsigned char *P2Start = 0;
 
@@ -75,11 +79,21 @@ int DoInputBlank(int /*bDipSwitch*/)
 		if (bii.szInfo[0]=='m') iJoyNum=0; else iJoyNum = bii.szInfo[1] - '1';
 	else
 	{
-		if (strcmp(bii.szInfo, "diag") == 0 || strcmp(bii.szInfo, "test") == 0)
+		if (strcmp(bii.szInfo, "diag") == 0)
+		{
+			DiagDip = bii.pVal;
+			continue;
+		}
+		if (strcmp(bii.szInfo, "service") == 0)
 		{
 			ServiceDip = bii.pVal;
+			continue;
 		}
-		continue;
+		if (strcmp(bii.szInfo, "test") == 0)
+		{
+			TestDip = bii.pVal;
+			continue;
+		}
 	}
 
 	sprintf(controlName,"p%i coin",iJoyNum+1);
@@ -310,9 +324,17 @@ int InpMake(unsigned int key[])
 	unsigned int i=0;
 	unsigned int down = 0;
 	short numJoy = joyCount?joyCount:1;
+	if (DiagDip)
+	{
+		*(DiagDip)=DiagRequest;
+	}
 	if (ServiceDip)
 	{
 		*(ServiceDip)=ServiceRequest;
+	}
+	if (TestDip)
+	{
+		*(TestDip)=TestRequest;
 	}
 	int nJoy;
 	for (short joyNum=0;joyNum<numJoy;joyNum++)
