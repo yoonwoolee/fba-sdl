@@ -22,6 +22,7 @@
 
 void do_keypad();
 void sdl_input_init();
+void button_map_init();
 void sdl_autofire_init();
 
 #endif // _SDL_INPUT_H_

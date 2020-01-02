@@ -79,12 +79,7 @@ static void gui_help();
 static void gui_reset();
 
 /* data definitions */
-#define GCW0_KEY_ORDER
-#ifdef GCW0_KEY_ORDER
-char *gui_KeyNames[] = {"A", "B", "Y", "X", "L", "R"};
-#else
 char *gui_KeyNames[] = {"A", "B", "X", "Y", "L", "R"};
-#endif
 int gui_KeyData[] = {0, 1, 2, 3, 4, 5};
 int gui_KeyValue[] = {SDLK_LCTRL, SDLK_LALT, SDLK_SPACE, SDLK_LSHIFT, SDLK_TAB, SDLK_BACKSPACE};
 char *gui_SoundDrvNames[] = {"No sound", "LIBAO", "SDL mutex", "SDL"};
@@ -122,7 +117,7 @@ MENU gui_KeyMenu = { 6, 0, (MENUITEM *)&gui_KeyMenuItems };
 MENUITEM gui_AutofireMenuItems[] = {
 	{(char *)"Autofire 1 fps - ", &gui_AutofireFpsData[0], 4, (char **)&gui_AutofireFpsNames, NULL},
 	{(char *)"Autofire 1 key - ", &gui_KeyData[0], 5, (char **)&gui_KeyNames, NULL},
-	{(char *)"Autofire 2 fps - ", &gui_AutofireFpsData[1], 5, (char **)&gui_AutofireFpsNames, NULL},
+	{(char *)"Autofire 2 fps - ", &gui_AutofireFpsData[1], 4, (char **)&gui_AutofireFpsNames, NULL},
 	{(char *)"Autofire 2 key - ", &gui_KeyData[1], 5, (char **)&gui_KeyNames, NULL},
 	{(char *)"Autofire 3 fps - ", &gui_AutofireFpsData[2], 4, (char **)&gui_AutofireFpsNames, NULL},
 	{(char *)"Autofire 3 key - ", &gui_KeyData[2], 5, (char **)&gui_KeyNames, NULL},
@@ -325,7 +320,7 @@ static void gui_help()
 	DrawString("START        Start1", COLOR_INACTIVE_ITEM, COLOR_BG, x, row++ * row_size);
 	DrawString("SELECT+START Start2", COLOR_INACTIVE_ITEM, COLOR_BG, x, row++ * row_size);
 	DrawString("A,B,X,Y,L,R  Fire buttons", COLOR_INACTIVE_ITEM, COLOR_BG, x, row++ * row_size);
-	DrawString("L+R+X        Show/hide fps", COLOR_INACTIVE_ITEM, COLOR_BG, x, (++row)++ * row_size);
+	DrawString("L+R+Y        Show/hide fps", COLOR_INACTIVE_ITEM, COLOR_BG, x, (++row)++ * row_size);
 	DrawString("L+R+A        Quick load", COLOR_INACTIVE_ITEM, COLOR_BG, x, row++ * row_size);
 	DrawString("L+R+B        Quick save", COLOR_INACTIVE_ITEM, COLOR_BG, x, row++ * row_size);
 	DrawString("L+R+SELECT   Service menu", COLOR_INACTIVE_ITEM, COLOR_BG, x, row++ * row_size);

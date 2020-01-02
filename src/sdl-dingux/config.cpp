@@ -175,10 +175,10 @@ void ConfigGameDefault()
 	keymap.down = SDLK_DOWN;
 	keymap.left = SDLK_LEFT;
 	keymap.right = SDLK_RIGHT;
-	keymap.fire1 = SDLK_LCTRL;	// A
+	keymap.fire1 = SDLK_LSHIFT;	// Y
 	keymap.fire2 = SDLK_LALT;	// B
 	keymap.fire3 = SDLK_SPACE;	// X
-	keymap.fire4 = SDLK_LSHIFT;	// Y
+	keymap.fire4 = SDLK_LCTRL;	// A
 	keymap.fire5 = SDLK_TAB;	// L
 	keymap.fire6 = SDLK_BACKSPACE;	// R
 	keymap.coin1 = SDLK_ESCAPE;	// SELECT

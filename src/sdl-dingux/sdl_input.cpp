@@ -18,6 +18,7 @@
  */
 
 #include <SDL/SDL.h>
+#include <tr1/unordered_map>
 
 #include "burner.h"
 #include "snd.h"
@@ -68,6 +69,8 @@ unsigned char DiagRequest = 0;
 unsigned char ServiceRequest = 0;
 unsigned char TestRequest = 0;
 unsigned char P1P2Start = 0;
+std::tr1::unordered_map<int, int> button_map;
+bool rjoys = false;
 
 // external functions
 void ChangeFrameskip(); // run.cpp
@@ -83,8 +86,9 @@ typedef struct
 {
 	int keymap;
 	int keypc;
-	int state;
 	int interval;
+	uint16_t state;
+    uint16_t enable;
 } AUTOFIRE_STATE;
 
 AUTOFIRE_STATE autofire_state[6];
@@ -92,23 +96,78 @@ int autofire_count;
 int power_pressed = 0;
 void sdl_input_read(bool process_autofire) // called from do_keypad()
 {
-	SDL_Event event;
-
-	int auto_it = process_autofire ? autofire_count : 0;
-
 	power_pressed = 0;
-	while(auto_it > 0 || SDL_PollEvent(&event)) {
+		//process joystick
+    if (!process_autofire && joyCount > 0) {
+		for (int i = 0; i < joyCount; i++) {
+			Sint16 leftX = SDL_JoystickGetAxis(joys[i],0);
+			Sint16 leftY = SDL_JoystickGetAxis(joys[i],1);
+			Sint16 rightX = 0;
+			Sint16 rightY = 0;
+			if(rjoys) {
+				rightX = SDL_JoystickGetAxis(joys[i],2);
+				rightY = SDL_JoystickGetAxis(joys[i],3);
+			}
+
+			if (leftX < -3200 || rightX < -3200)
+			{
+				keystick |= KEYPAD_LEFT;
+				keypad |= KEYPAD_LEFT;
+			}
+			else if (leftX > 3200 || rightX > 3200)
+			{
+				keystick |= KEYPAD_RIGHT;
+				keypad |= KEYPAD_RIGHT;
+			}
+			else {
+				if(keystick & KEYPAD_LEFT ) {
+					keystick &= ~KEYPAD_LEFT;
+					keypad &= ~KEYPAD_LEFT;
+				}
+				if(keystick & KEYPAD_RIGHT ) {
+					keystick &= ~KEYPAD_RIGHT;
+					keypad &= ~KEYPAD_RIGHT;
+				}
+			}
+
+			if (leftY < -3200 || rightY < -3200)
+			{
+				keystick |= KEYPAD_UP;
+				keypad |= KEYPAD_UP;
+			}
+			else if (leftY > 3200 || rightY > 3200)
+			{
+				keystick |= KEYPAD_DOWN;
+				keypad |= KEYPAD_DOWN;
+			}
+			else {
+				if(keystick & KEYPAD_UP ) {
+					keystick &= ~KEYPAD_UP;
+					keypad &= ~KEYPAD_UP;
+				}
+				if(keystick & KEYPAD_DOWN ) {
+					keystick &= ~KEYPAD_DOWN;
+					keypad &= ~KEYPAD_DOWN;
+				}
+			}
+		}
+	}
+	int auto_it = process_autofire ? autofire_count : 0;
+	while(1) {
+        SDL_Event event;
+        event.type = 0;
+        event.key.keysym.sym = (SDLKey)0;
 		// process autofire
-		if (auto_it > 0) {
+		if (process_autofire && auto_it > 0) {
 			bool handle = false;
 			for (int it = auto_it - 1; it >= 0; it--) {
 				auto_it--;
-				if (autofire_state[it].state != 0) {
-					if (nCurrentFrame % autofire_state[it].interval != 0) {
+				if (autofire_state[it].enable || autofire_state[it].state ) {
+					if ((nCurrentFrame % autofire_state[it].interval != 0) && autofire_state[it].enable && (autofire_state[it].state!=2) ) {
 						continue;
 					}
-					event.type = (autofire_state[it].state == 1) ? SDL_KEYDOWN : SDL_KEYUP;
-					autofire_state[it].state = autofire_state[it].state % 2 + 1;
+					event.type = (autofire_state[it].state != 1)? SDL_KEYDOWN : SDL_KEYUP;
+					autofire_state[it].state = (autofire_state[it].state==1)? 0 : 1;
 					event.key.keysym.sym = (SDLKey)autofire_state[it].keymap;
 					handle = true;
 					break;
@@ -118,104 +177,10 @@ void sdl_input_read(bool process_autofire) // called from do_keypad()
 				break;
 			}
 		}
-		//process joystick
-		if (joyCount > 0) {
-			for (int i = 0; i < joyCount; i++) {
-				Sint16 leftX = SDL_JoystickGetAxis(joys[i],0);
-				Sint16 leftY = SDL_JoystickGetAxis(joys[i],1);
-				Sint16 rightX = 0;
-				Sint16 rightY = 0;
-				if(SDL_JoystickNumAxes(joys[i])>2) {
-					rightX = SDL_JoystickGetAxis(joys[i],2);
-					rightY = SDL_JoystickGetAxis(joys[i],3);
-				}
+        else if( !SDL_PollEvent(&event) ) {
+            break;
+        }
 
-				if (leftX < -3200 || rightX < -3200)
-				{
-					keystick |= KEYPAD_LEFT;
-					keypad |= KEYPAD_LEFT;
-				}
-				else if (leftX > 3200 || rightX > 3200)
-				{
-					
-					keystick |= KEYPAD_RIGHT;
-					keypad |= KEYPAD_RIGHT;
-				}
-				else {
-					if(keystick & KEYPAD_LEFT ) {
-						keystick &= ~KEYPAD_LEFT;
-						keypad &= ~KEYPAD_LEFT;
-					}
-					else if(keystick & KEYPAD_RIGHT ) {
-						keystick &= ~KEYPAD_RIGHT;
-						keypad &= ~KEYPAD_RIGHT;
-					}
-				}
-
-				if (leftY < -3200 || rightY < -3200)
-				{
-					keystick |= KEYPAD_UP;
-					keypad |= KEYPAD_UP;
-				}
-				else if (leftY > 3200 || rightY > 3200)
-				{
-					keystick |= KEYPAD_DOWN;	
-					keypad |= KEYPAD_DOWN;
-				}
-				else {
-					if(keystick & KEYPAD_UP ) {
-						keystick &= ~KEYPAD_UP;
-						keypad &= ~KEYPAD_UP;
-					}
-					else if(keystick & KEYPAD_DOWN ) {
-						keystick &= ~KEYPAD_DOWN;
-						keypad &= ~KEYPAD_DOWN;
-					}
-				}
-				
-			}
-		}
-		// if (event.type == SDL_JOYAXISMOTION) { /* Handle Joystick Motion */
-		// 	if ((event.jaxis.value < -3200) || (event.jaxis.value > 3200))
-		// 	{
-		// 		/* code goes here */
-		// 		if (event.jaxis.axis == 0 || event.jaxis.axis == 2)
-		// 		{
-		// 			/* Left-right movement code goes here */
-		// 			//printf(" Left-right\n");
-		// 			if (event.jaxis.value < -3200)
-		// 			{
-		// 				keypad |= KEYPAD_LEFT;
-		// 			}
-		// 			else if (event.jaxis.value > 3200)
-		// 			{
-		// 				keypad |= KEYPAD_RIGHT;
-		// 			}
-		// 			else {
-		// 				keypad &= ~KEYPAD_LEFT;
-		// 				keypad &= ~KEYPAD_RIGHT;
-		// 			}
-		// 		}
-		// 		if (event.jaxis.axis == 1 || event.jaxis.axis == 3)
-		// 		{
-		// 			/* Up-Down movement code goes here */
-		// 			//printf("Up-Down\n");
-		// 			if (event.jaxis.value < -3200)
-		// 			{
-		// 				keypad |= KEYPAD_UP;
-		// 			}
-		// 			else if (event.jaxis.value > 3200)
-		// 			{
-		// 				keypad |= KEYPAD_DOWN;
-		// 			}
-		// 			else {
-		// 				keypad &= ~KEYPAD_UP;
-		// 				keypad &= ~KEYPAD_DOWN;
-		// 			}
-		// 		}
-		// 	}
-		// }
-		// else 
 		if (event.type == SDL_KEYUP) {
 			// FBA keypresses
 			if (event.key.keysym.sym == keymap.up) keypad &= ~KEYPAD_UP;
@@ -233,23 +198,8 @@ void sdl_input_read(bool process_autofire) // called from do_keypad()
 
 			// handheld keypresses
 			if (!process_autofire) {
-				if (event.key.keysym.sym == SDLK_LCTRL) keypc &= ~BUTTON_A;
-				else if (event.key.keysym.sym == SDLK_LALT) keypc &= ~BUTTON_B;
-				else if (event.key.keysym.sym == SDLK_SPACE) keypc &= ~BUTTON_X;
-				else if (event.key.keysym.sym == SDLK_LSHIFT) keypc &= ~BUTTON_Y;
-				else if (event.key.keysym.sym == SDLK_TAB) keypc &= ~BUTTON_SL;
-				else if (event.key.keysym.sym == SDLK_BACKSPACE) keypc &= ~BUTTON_SR;
-				else if (event.key.keysym.sym == SDLK_ESCAPE) keypc &= ~BUTTON_SELECT;
-				else if (event.key.keysym.sym == SDLK_RETURN) keypc &= ~BUTTON_START;
-				else if (event.key.keysym.sym == SDLK_PAGEUP) keypc &= ~BUTTON_L2;
-				else if (event.key.keysym.sym == SDLK_PAGEDOWN) keypc &= ~BUTTON_R2;
-				else if (event.key.keysym.sym == SDLK_KP_DIVIDE) keypc &= ~BUTTON_L3;
-				else if (event.key.keysym.sym == SDLK_KP_PERIOD) keypc &= ~BUTTON_R3;
-				else if (event.key.keysym.sym == SDLK_q) keypc &= ~BUTTON_QT;
-				else if (event.key.keysym.sym == SDLK_p) keypc &= ~BUTTON_PAUSE;
-				else if (event.key.keysym.sym == SDLK_s) keypc &= ~BUTTON_QSAVE;
-				else if (event.key.keysym.sym == SDLK_l) keypc &= ~BUTTON_QLOAD;
-				else if (event.key.keysym.sym == SDLK_m) keypc &= ~BUTTON_MENU;
+                if( button_map.find(event.key.keysym.sym) != button_map.end() )
+                    keypc &= ~button_map[event.key.keysym.sym];
 			}
 		} else if (event.type == SDL_KEYDOWN) {
 			// FBA keypresses
@@ -268,24 +218,9 @@ void sdl_input_read(bool process_autofire) // called from do_keypad()
 
 			// handheld keypresses
 			if (!process_autofire) {
-				if (event.key.keysym.sym == SDLK_LCTRL) keypc |= BUTTON_A;
-				else if (event.key.keysym.sym == SDLK_LALT) keypc |= BUTTON_B;
-				else if (event.key.keysym.sym == SDLK_SPACE) keypc |= BUTTON_X;
-				else if (event.key.keysym.sym == SDLK_LSHIFT) keypc |= BUTTON_Y;
-				else if (event.key.keysym.sym == SDLK_TAB) keypc |= BUTTON_SL;
-				else if (event.key.keysym.sym == SDLK_BACKSPACE) keypc |= BUTTON_SR;
-				else if (event.key.keysym.sym == SDLK_ESCAPE) keypc |= BUTTON_SELECT;
-				else if (event.key.keysym.sym == SDLK_RETURN) keypc |= BUTTON_START;
-				else if (event.key.keysym.sym == SDLK_PAGEUP) keypc |= BUTTON_L2;
-				else if (event.key.keysym.sym == SDLK_PAGEDOWN) keypc |= BUTTON_R2;
-				else if (event.key.keysym.sym == SDLK_KP_DIVIDE) keypc |= BUTTON_L3;
-				else if (event.key.keysym.sym == SDLK_KP_PERIOD) keypc |= BUTTON_R3;
+                if( button_map.find(event.key.keysym.sym) != button_map.end() )
+                    keypc |= button_map[event.key.keysym.sym];
 				else if (event.key.keysym.sym == SDLK_HOME) power_pressed = 1;
-				else if (event.key.keysym.sym == SDLK_q) keypc |= BUTTON_QT;
-				else if (event.key.keysym.sym == SDLK_p) keypc |= BUTTON_PAUSE;
-				else if (event.key.keysym.sym == SDLK_s) keypc |= BUTTON_QSAVE;
-				else if (event.key.keysym.sym == SDLK_l) keypc |= BUTTON_QLOAD;
-				else if (event.key.keysym.sym == SDLK_m) keypc |= BUTTON_MENU;
 			}
 		}
 		if (process_autofire && auto_it <= 0) {
@@ -309,11 +244,12 @@ void do_keypad()
 
 	sdl_input_read(false);
 	for (int it = 0; it < autofire_count; it++) {
-		if (autofire_state[it].state == 0 && (keypc & autofire_state[it].keypc)) {
-			autofire_state[it].state = 1;
+		if (autofire_state[it].enable == 0 && (keypc & autofire_state[it].keypc)) {
+            autofire_state[it].enable = 1;
+			autofire_state[it].state = 2; //key down no delay
 		}
-		if (autofire_state[it].state != 0 && !(keypc & autofire_state[it].keypc)) {
-			autofire_state[it].state = 0;
+		if (autofire_state[it].enable != 0 && !(keypc & autofire_state[it].keypc)) {
+            autofire_state[it].enable = 0;
 		}
 	}
 	sdl_input_read(true);
@@ -405,6 +341,7 @@ void do_keypad()
 
 void sdl_input_init()
 {
+    rjoys = false;
 	joyCount = SDL_NumJoysticks();
 	if (joyCount > 5) joyCount = 5;
 	printf("%d Joystick(s) Found\n", joyCount);
@@ -416,9 +353,33 @@ void sdl_input_init()
 			printf("Hats %d\t",SDL_JoystickNumHats(joys[i]));
 			printf("Buttons %d\t",SDL_JoystickNumButtons(joys[i]));
 			printf("Axis %d\n",SDL_JoystickNumAxes(joys[i]));
+            if(!rjoys)
+              rjoys = (SDL_JoystickNumAxes(joys[i])>2);
 		}
 	}
+    button_map_init();
 	sdl_autofire_init();
+}
+
+void button_map_init() {
+    button_map.clear();
+    button_map[SDLK_LCTRL] = BUTTON_A;
+    button_map[SDLK_LALT] = BUTTON_B;
+    button_map[SDLK_SPACE] = BUTTON_X;
+    button_map[SDLK_LSHIFT] = BUTTON_Y;
+    button_map[SDLK_TAB] = BUTTON_SL;
+    button_map[SDLK_BACKSPACE] = BUTTON_SR;
+    button_map[SDLK_ESCAPE] = BUTTON_SELECT;
+    button_map[SDLK_RETURN] = BUTTON_START;
+	button_map[SDLK_PAGEUP] = BUTTON_L2;
+	button_map[SDLK_PAGEDOWN] = BUTTON_R2;
+	button_map[SDLK_KP_DIVIDE] = BUTTON_L3;
+	button_map[SDLK_KP_PERIOD] = BUTTON_R3;
+    button_map[SDLK_q] = BUTTON_QT;
+    button_map[SDLK_p] = BUTTON_PAUSE;
+    button_map[SDLK_s] = BUTTON_QSAVE;
+    button_map[SDLK_l] = BUTTON_QLOAD;
+    button_map[SDLK_m] = BUTTON_MENU;
 }
 
 void sdl_autofire_init() {
@@ -428,16 +389,13 @@ void sdl_autofire_init() {
 	for(int i = 0; i < 6; af++, key++, i++) {
 		if (af->fps != 0) {
 			autofire_state[autofire_count].keymap = *key;
-			autofire_state[autofire_count].state = 0;
 			autofire_state[autofire_count].interval = af->fps / 2;
+			autofire_state[autofire_count].state = 0;
+            autofire_state[autofire_count].enable = 0;
 			
 			int keydef = 0;
-			if (af->key == SDLK_LCTRL) keydef = BUTTON_A;
-			else if (af->key == SDLK_LALT) keydef = BUTTON_B;
-			else if (af->key == SDLK_SPACE) keydef = BUTTON_X;
-			else if (af->key == SDLK_LSHIFT) keydef = BUTTON_Y;
-			else if (af->key == SDLK_TAB) keydef = BUTTON_SL;
-			else if (af->key == SDLK_BACKSPACE) keydef = BUTTON_SR;
+            if( button_map.find(af->key) != button_map.end() )
+                keydef = button_map[af->key];
 
 			if (key != 0) {
 				autofire_state[autofire_count++].keypc = keydef;
