@@ -96,7 +96,6 @@ int autofire_count;
 int power_pressed = 0;
 void sdl_input_read(bool process_autofire) // called from do_keypad()
 {
-	power_pressed = 0;
 	int auto_it = process_autofire ? autofire_count : 0;
 	while(1) {
 		SDL_Event event;
@@ -229,7 +228,7 @@ void do_keypad()
 	sdl_input_read(true);
 
 	// process redefinable keypresses
-	
+
 	if(options.rotate == 1 ) { //-90
 		if (keypad & KEYPAD_UP) FBA_KEYPAD[0] |= bVert ? KEYPAD_LEFT : KEYPAD_UP;
 		if (keypad & KEYPAD_DOWN) FBA_KEYPAD[0] |= bVert ? KEYPAD_RIGHT : KEYPAD_DOWN;
@@ -272,6 +271,13 @@ void do_keypad()
 		SndPause(0);
 	}
 
+	if (power_pressed) {
+		power_pressed = 0;
+		SndPause(1);
+		gui_Run();
+		SndPause(0);
+	}
+
 	if (keypc & BUTTON_PAUSE) {
 		bRunPause = !bRunPause;
 		SndPause(bRunPause);
@@ -291,7 +297,7 @@ void do_keypad()
 		}
 	}
 	if ((keypc & BUTTON_SL) && (keypc & BUTTON_SR)) {
-		if (keypc & BUTTON_Y) { 
+		if (keypc & BUTTON_Y) {
 			ChangeFrameskip();
 			keypc &= ~BUTTON_Y;
 		} else if (keypc & BUTTON_B && !bRunPause) {
@@ -316,6 +322,7 @@ void do_keypad()
 void sdl_input_init()
 {
 	rjoys = false;
+	power_pressed = 0;
 	joyCount = SDL_NumJoysticks();
 	if (joyCount > 5) joyCount = 5;
 	printf("%d Joystick(s) Found\n", joyCount);
@@ -366,7 +373,7 @@ void sdl_autofire_init() {
 			autofire_state[autofire_count].interval = af->fps / 2;
 			autofire_state[autofire_count].state = 0;
 			autofire_state[autofire_count].enable = 0;
-			
+
 			int keydef = 0;
 			if( button_map.find(af->key) != button_map.end() )
 				keydef = button_map[af->key];
