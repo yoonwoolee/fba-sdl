@@ -67,10 +67,81 @@ typedef struct {
 	MENUITEM *m; // array of items
 } MENU;
 
+typedef struct {
+	int w;
+	int h;
+	uint8_t pixels[8];
+} inGameScreen_t;
+inGameScreen_t * inGameScreen = NULL;
+
+static inline inGameScreen_t * CopyScreen(SDL_Surface * src)
+{
+	if(!src)
+		return NULL;
+	if( src->w > 1920 || src->h > 1200 )
+		return NULL;
+	const size_t sz = src->w * src->h * 2;
+	inGameScreen_t * savescreen = (inGameScreen_t *) malloc(sz + 16);
+	if(!savescreen)
+		return NULL;
+	savescreen->w = src->w;
+	savescreen->h = src->h;
+	memcpy(savescreen->pixels, src->pixels, sz);
+	return savescreen;
+}
+
+#define SP_SCREEN_W 320
+#define SP_SCREEN_H 240
+#define SP_PIC_W (SP_SCREEN_W/2)
+#define SP_PIC_H (SP_SCREEN_H/2)
+
+void save_state_preview(bool ingame)
+{
+	if(!ingame && NULL==inGameScreen)
+		return;
+
+	char sp_path[MAX_PATH];
+	sprintf(sp_path, "%s/%s%i.spreview", szAppSavePath, BurnDrvGetText(DRV_NAME), nSavestateSlot);
+	FILE * fp = fopen(sp_path, "wb");
+	uint16_t sbuf[SP_PIC_W+8];
+	memset(sbuf,0,sizeof(sbuf));
+	uint16_t * p = NULL;
+	int screen_w = 0, screen_h = 0;
+	if( ingame ) {
+		p = (uint16_t *) screen->pixels;
+		screen_w = screen->w;
+		screen_h = screen->h;
+	} else {
+		p = (uint16_t *) inGameScreen->pixels;
+		screen_w = inGameScreen->w;
+		screen_h = inGameScreen->h;
+	}
+	if (!p || !screen_w || !screen_h )
+		return;
+	if(fp) {
+		int w = screen_w/2;
+		w = (w<SP_PIC_W)? w : SP_PIC_W;
+		int h = screen_h/2;
+		h = (h<SP_PIC_H)? h : SP_PIC_H;
+		for(int y=0; y<h; y++, p+=screen_w*2)
+		{
+			for(int x=0; x<w; x++)
+				sbuf[x] = p[x*2];
+			fwrite(sbuf, 1, SP_PIC_W*2, fp);
+		}
+		memset(sbuf,0,SP_PIC_W*2);
+		for(int y=h; y<SP_PIC_H; y++)
+			fwrite(sbuf, 1, SP_PIC_W*2, fp);
+		memset(sbuf,0,16);
+		fwrite(sbuf,1,16,fp);
+		fclose(fp);
+	}
+}
+
 /* prototypes */
 static void gui_Stub() { }
 static void gui_LoadState() { extern int done; if(!StatedLoad(nSavestateSlot)) done = 1; }
-static void gui_Savestate() { StatedSave(nSavestateSlot); }
+static void gui_Savestate() { StatedSave(nSavestateSlot); save_state_preview(false); }
 static void call_exit() { extern int done; GameLooping = false; done = 1; }
 static void call_continue() { extern int done; done = 1; }
 static void gui_KeyMenuRun();
@@ -207,6 +278,37 @@ void ShowHeader()
 	DrawString("Based on FBA " VERSION " (c) Team FB Alpha", COLOR_HELP_TEXT, COLOR_BG, 0, 12);
 }
 
+void Show_state_preview()
+{
+	char sp_path[MAX_PATH];
+	static uint16_t spreview_buf[SP_PIC_W*SP_PIC_H+8];
+	sprintf(sp_path, "%s/%s%i.spreview", szAppSavePath, BurnDrvGetText(DRV_NAME), nSavestateSlot);
+	FILE * fp = fopen(sp_path, "rb");
+	if(fp) {
+		fread(spreview_buf, 1, SP_PIC_W * SP_PIC_H * 2, fp);
+		fclose(fp);
+	}
+	else {
+		memset(spreview_buf, 0, sizeof(spreview_buf));
+	}
+#define SPREVIEW_LOC_X 150
+#define SPREVIEW_LOC_Y 48
+	uint16_t * dest = (uint16_t *) menuSurface->pixels;
+	dest += SP_SCREEN_W*SPREVIEW_LOC_Y;
+	dest += SPREVIEW_LOC_X ;
+	uint16_t * sline_buf = spreview_buf;
+	for(int y=0; y<SP_PIC_H; ++y, dest += SP_SCREEN_W, sline_buf += SP_PIC_W)
+	{
+		memcpy(dest, sline_buf, SP_PIC_W*2);
+	}
+}
+
+void ShowPreview(MENU *menu)
+{
+	if(menu == &gui_MainMenu)
+		if(menu->itemCur==3 || menu->itemCur==4)
+			Show_state_preview();
+}
 /*
 	Shows menu items and pointing arrow
 */
@@ -219,19 +321,19 @@ void ShowMenu(MENU *menu)
 	SDL_FillRect(menuSurface, NULL, COLOR_BG);
 
 	// show menu lines
-	int startline = menu == &gui_AutofireMenu ? 12 : 16;
+	int startline = menu == &gui_AutofireMenu ? 11 : 12;
 	for(i = 0; i < menu->itemNum; i++, mi++) {
 		int fg_color;
 
 		if(menu->itemCur == i) fg_color = COLOR_ACTIVE_ITEM; else fg_color = COLOR_INACTIVE_ITEM;
-		ShowMenuItem(80, (startline + i) * 8, mi, fg_color);
+		ShowMenuItem(40, (startline + i) * 8, mi, fg_color);
 	}
-
-	// show preview screen
-	//ShowPreview(menu);
 
 	// print info string
 	ShowHeader();
+
+	// show preview screen
+	ShowPreview(menu);
 }
 
 /*
@@ -369,6 +471,12 @@ void gui_Run()
 	debug = 1;
 #endif
 	gettimeofday(&s, NULL);
+	// copy in game screen for save preview picture
+	if (inGameScreen) {
+		free(inGameScreen);
+		inGameScreen = NULL;
+	}
+	inGameScreen = CopyScreen(screen);
 #ifdef DEVICE_GCW0
 	if (hwscale > 0 && (screen->w != 320 || screen->h != 240)) {
 		VideoInitForce320x240(); // sets video mode to 320x240 so the menu screen looks right when a game uses a resolution different than 320x240
@@ -395,6 +503,7 @@ void gui_Run()
 void gui_Exit()
 {
 	if(menuSurface) SDL_FreeSurface(menuSurface);
+	if(inGameScreen) { free(inGameScreen); inGameScreen = NULL; }
 }
 
 #ifdef FBA_DEBUG
