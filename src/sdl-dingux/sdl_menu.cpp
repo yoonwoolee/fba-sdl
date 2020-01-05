@@ -99,10 +99,6 @@ void save_state_preview(bool ingame)
 {
 	if(!ingame && NULL==inGameScreen)
 		return;
-
-	char sp_path[MAX_PATH];
-	sprintf(sp_path, "%s/%s%i.spreview", szAppSavePath, BurnDrvGetText(DRV_NAME), nSavestateSlot);
-	FILE * fp = fopen(sp_path, "wb");
 	uint16_t sbuf[SP_PIC_W+8];
 	memset(sbuf,0,sizeof(sbuf));
 	uint16_t * p = NULL;
@@ -118,6 +114,9 @@ void save_state_preview(bool ingame)
 	}
 	if (!p || !screen_w || !screen_h )
 		return;
+	char sp_path[MAX_PATH];
+	sprintf(sp_path, "%s/%s%i.spreview", szAppSavePath, BurnDrvGetText(DRV_NAME), nSavestateSlot);
+	FILE * fp = fopen(sp_path, "wb");
 	if(fp) {
 		int w = screen_w/2;
 		w = (w<SP_PIC_W)? w : SP_PIC_W;
