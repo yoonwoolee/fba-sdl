@@ -637,10 +637,20 @@ int gui_menu_get_prev(std::vector<int>& values, int current)
 	return result;
 }
 
+void gui_clear_last_romlist()
+{
+	char filename[MAX_PATH];
+	sprintf(filename, "%s/lastromlist.txt", szAppHomePath);
+	remove(filename);
+}
+
 void put_option_line(int first, unsigned char num, unsigned char y)
 {
 	switch(first + num) {
 	// MAIN OPTIONS
+	case OPTION_GUI_ROMLIST_CACHE_CLEAR:
+		put_string( "Clear ROMs list cache and rescaning" , OPTIONS_START_X , y , BLANC , gui_screen );
+		break;
 	case OPTION_GUI_DELAYSPEED:
 		sprintf((char*)g_string, "Keyrepeat delay: %d" , cfg.delayspeed );
 		put_string( g_string , OPTIONS_START_X , y , BLANC , gui_screen );
@@ -1202,6 +1212,19 @@ void ss_prg_options(int first, int last)
 						gui_reset_selection();
 						sprintf((char*)g_message, "Favorites list successfully cleared");
 						prep_bg_opt(first);
+					} else if (option == OPTION_GUI_ROMLIST_CACHE_CLEAR) {
+						gui_clear_last_romlist();
+						gui_reset_selection();
+						sprintf((char*)g_message, "ROMs list cache successfully cleared, rescaning...");
+						prep_bg_opt(first);
+						affiche_BG();
+						drawSprite(barre, gui_screen, 0, 0, 4, options_y, 312, 10);
+						redraw_screen();
+
+						gui_sort_romlist();
+
+						prep_bg_main();
+						Quit = 1;
 					}
 				} else if(event.key.keysym.sym == SDLK_RETURN || event.key.keysym.sym == SDLK_SPACE) {
 					int option = first + options_num;
