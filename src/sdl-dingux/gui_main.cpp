@@ -26,6 +26,7 @@
 #include <algorithm>
 #include <map>
 #include <vector>
+#include <unordered_set>
 
 #include <SDL/SDL.h>
 #include <SDL/SDL_image.h>
@@ -333,9 +334,9 @@ char ss_prg_credit(void)
 void ss_prg_help(void)
 {
 	#define HELP_X  20
-	#define HELP_Y	52
+	#define HELP_Y	32
 	#define HELP_L	280
-	#define HELP_H	136
+	#define HELP_H	176
 
 	unsigned int compteur = 1;
 	Uint32 Pnoir = SDL_MapRGB(help->format, 0, 0, 0);
@@ -351,7 +352,7 @@ void ss_prg_help(void)
 	carre_plein(help, HELP_X, HELP_Y, HELP_L, HELP_H, Pblanc);
 	carre_plein(help, HELP_X + 1, HELP_Y + 1, HELP_L - 2, HELP_H - 2, Pnoir);
 
-	put_string("COLOR HELP", 130, HELP_Y + 8, BLANC, help);
+	put_string("COLOR HELP", 130, HELP_Y + 8, VERT, help);
 	put_string("RED      missing", HELP_X + 82, HELP_Y + 22, ROUGE, help);
 	put_string("YELLOW   parent rom", HELP_X + 82, HELP_Y + 32, JAUNE, help);
 	put_string("ORANGE   clone rom", HELP_X + 82, HELP_Y + 42, ORANGE, help);
@@ -359,13 +360,32 @@ void ss_prg_help(void)
 	//put_string("GREEN    clone & parent & cache", HELP_X + 8, HELP_Y + 64, VERT, help);
 	//put_string("         detected", HELP_X + 8, HELP_Y + 74, VERT, help);
 	//put_string("BLUE     parent & cache detected", HELP_X + 8, HELP_Y + 84, BLEU, help);
+	put_string("WHITE    selected flag", HELP_X + 82, HELP_Y + 52, BLANC, help);
 	
-	put_string("HOTKEY HELP", 130, HELP_Y + 62, BLANC, help);
-	put_string("X+LEFT and X+RIGHT   filter by hardware", HELP_X + 10, HELP_Y + 76, BLEU, help);
-	put_string("X+UP and X+DOWN      filter by availability", HELP_X + 10, HELP_Y + 86, BLEU, help);
-	put_string("X+L and X+R          filter by genre", HELP_X + 10, HELP_Y + 96, BLEU, help);
+	put_string("HOTKEY HELP", 130, HELP_Y + 72, VERT, help);
+#ifdef GCW0_BTN_LAYOUT
+#define HELP_X_LEFTRIGHT	"X+LEFT and X+RIGHT   filter by hardware"
+#define HELP_X_UPDOWN		"X+UP and X+DOWN      filter by availability"
+#define HELP_X_LR			"X+L and X+R          filter by genre"
+#define HELP_X_SELETE		"X+SELECT    set/unset selected flag to ROM"
+#define HELP_X_A			"X+A     add selected ROM to favorites list"
+#define HELP_X_START		"X+START NO comfirm delete all selected ROM"
+#else
+#define HELP_X_LEFTRIGHT	"Y+LEFT and Y+RIGHT   filter by hardware"
+#define HELP_X_UPDOWN		"Y+UP and Y+DOWN      filter by availability"
+#define HELP_X_LR			"Y+L and Y+R          filter by genre"
+#define HELP_X_SELETE		"Y+SELECT    set/unset selected flag to ROM"
+#define HELP_X_A			"Y+A     add selected ROM to favorites list"
+#define HELP_X_START		"Y+START NO comfirm delete all selected ROM"
+#endif
+	put_string(HELP_X_LEFTRIGHT, HELP_X + 10, HELP_Y + 86, BLEU, help);
+	put_string(HELP_X_UPDOWN, HELP_X + 10, HELP_Y + 96, BLEU, help);
+	put_string(HELP_X_LR, HELP_X + 10, HELP_Y + 106, BLEU, help);
+	put_string(HELP_X_SELETE, HELP_X + 10, HELP_Y + 116, BLANC, help);
+	put_string(HELP_X_A, HELP_X + 10, HELP_Y + 126, BLEU, help);
+	put_string(HELP_X_START, HELP_X + 10, HELP_Y + 136, ROUGE, help);
 
-	put_string("Any button to return", 100, HELP_Y + 116, BLANC, help);
+	put_string("Any button to return", 100, HELP_Y + 156, VERT, help);
 
 
 	int Hquit = 0;
@@ -1581,6 +1601,7 @@ void gui_menu_main()
 	unsigned int zipnum;
 	unsigned int y;
 	unsigned int compteur = 0;
+	std::unordered_set<int> selected_flag_roms;
 
 	sel.y = START_Y-1;
 	sel.x=0;
@@ -1607,20 +1628,24 @@ void gui_menu_main()
 		zipnum = START_Y;
 		if(romlist.nb_list[cfg.list] <= LINES_COUNT) {
 			for(y = 0; y < romlist.nb_list[cfg.list]; ++y) {
+				bool df_color = selected_flag_roms.count(
+					gui_get_filtered_romsort(cfg.list, cfg.hardware, cfg.genre, cfg.clone)[y]);
 				put_stringM(ROMLIST(name, y), // string
 						START_X, // x
 						zipnum, // y
 						ROMLIST(longueur, y), // length
-						ROMLIST(etat, y)); // color
+						df_color? BLANC : ROMLIST(etat, y)); // color
 				zipnum += LINE_HEIGHT;
 			}
 		} else {
 			for(y = sel.ofs; y < sel.ofs + LINES_COUNT; ++y) {
+				bool df_color = selected_flag_roms.count(
+					gui_get_filtered_romsort(cfg.list, cfg.hardware, cfg.genre, cfg.clone)[y]);
 				put_stringM(ROMLIST(name, y), 
 						START_X, 
 						zipnum, 
 						ROMLIST(longueur, y), 
-						ROMLIST(etat, y));
+						df_color? BLANC : ROMLIST(etat, y));
 				zipnum += LINE_HEIGHT;
 			}
 		}
@@ -1639,6 +1664,7 @@ void gui_menu_main()
 					// no need to increment compteur
 					continue;
 				} else if(event.key.keysym.sym == SDLK_TAB) { // page up
+pageup:
 					Uint8* keystate = SDL_GetKeyState(NULL);
 					if (keystate[SDLK_LSHIFT]) {
 						if (compteur == 0) {
@@ -1660,6 +1686,7 @@ void gui_menu_main()
 						}
 					}
 				} else if(event.key.keysym.sym == SDLK_BACKSPACE) { // page down
+pagedown:
 					Uint8* keystate = SDL_GetKeyState(NULL);
 					if (keystate[SDLK_LSHIFT]) {
 						if (compteur == 0) {
@@ -1681,8 +1708,7 @@ void gui_menu_main()
 						}
 					}
 				} else if(event.key.keysym.sym == SDLK_DOWN) {
-					Uint8* keystate = SDL_GetKeyState(NULL);
-					if (keystate[SDLK_LSHIFT]) {
+					if (SDL_GetKeyState(NULL)[SDLK_LSHIFT]) {
 						if (compteur == 0) {
 							// next filter
 							cfg.list = (cfg.list + 1) % NB_FILTERS;
@@ -1698,6 +1724,7 @@ void gui_menu_main()
 						sel.rom = 0;
 						sel.ofs = 0;
 					} else {
+movedown:
 						if (romlist.nb_list[cfg.list] < 14) { // if rom number in list < 14
 								if (sel.rom < romlist.nb_list[cfg.list] - 1) {
 									sel.y += LINE_HEIGHT;
@@ -1773,10 +1800,14 @@ void gui_menu_main()
 							prep_bg_main();
 							gui_write_cfg();
 						}
+					} else
+						goto pageup;
+#if 0
 					} else if (romlist.nb_list[cfg.list] == 0) {
 					} else if (sel.x > 0) {
 						--sel.x;
 					}
+#endif
 				} else if(event.key.keysym.sym == SDLK_RIGHT) {
 					Uint8* keystate = SDL_GetKeyState(NULL);
 					if (keystate[SDLK_LSHIFT]) {
@@ -1787,33 +1818,83 @@ void gui_menu_main()
 							prep_bg_main();
 							gui_write_cfg();
 						}
+					} else
+						goto pagedown;
+#if 0
 					} else if (romlist.nb_list[cfg.list] == 0) {
 					} else if (sel.x < romlist.long_max - 53) {
 						++sel.x;
 					}
-
-				} else if(event.key.keysym.sym == SDLK_ESCAPE || event.key.keysym.sym == SDLK_LALT) {
+#endif
+				} else if(event.key.keysym.sym == SDLK_ESCAPE ) { // SELECT button
+					Uint8* keystate = SDL_GetKeyState(NULL);
+					if (keystate[SDLK_LSHIFT]) {
+						if(romlist.nb_list[cfg.list] != 0 && ROMLIST(etat, sel.rom) != ROUGE) {
+							int sel_rom = gui_get_filtered_romsort(cfg.list, cfg.hardware, cfg.genre, cfg.clone)[sel.rom];
+							if (0 == selected_flag_roms.count(sel_rom))
+								selected_flag_roms.insert(sel_rom);
+							else
+								selected_flag_roms.erase(sel_rom);
+							if (sel.rom == romlist.nb_list[cfg.list] - 1 && compteur == 0) {
+								sel.y = START_Y - 1;
+								sel.rom = 0;
+								sel.ofs = 0;
+							} else
+								goto movedown;
+						}
+					}
+					else if(ss_prg_credit()) Quit = 1;
+				} else if( event.key.keysym.sym == SDLK_LALT) { // B button
 					if(ss_prg_credit()) Quit = 1;
-				} else if(event.key.keysym.sym == SDLK_LCTRL){
-					// executer l'emu
-					if(romlist.nb_list[cfg.list] != 0 && ROMLIST(etat, sel.rom) != ROUGE) {
-						ss_prog_run();
+				} else if(event.key.keysym.sym == SDLK_LCTRL){ // A button
+					if (SDL_GetKeyState(NULL)[SDLK_LSHIFT]) {
+						for(auto onerom : selected_flag_roms) {
+							if (4 != cfg.list)
+								add_to_favorite(onerom);
+							else
+								remove_from_favorite(onerom);
+						}
+						save_favorite();
+						selected_flag_roms.clear();
 						prep_bg_main();
+					}
+					else {
+						// executer l'emu
+						if(romlist.nb_list[cfg.list] != 0 && ROMLIST(etat, sel.rom) != ROUGE) {
+							ss_prog_run();
+							prep_bg_main();
 
-						// flush event queue
-						while(SDL_PollEvent(&event));
-						// simulate key unpress
-						// important
-						event.type = SDL_KEYUP;
-						event.key.keysym.sym = SDLK_LCTRL;
-						SDL_PushEvent(&event);
-						compteur = 0;
-						continue;
+							// flush event queue
+							while(SDL_PollEvent(&event));
+							// simulate key unpress
+							// important
+							event.type = SDL_KEYUP;
+							event.key.keysym.sym = SDLK_LCTRL;
+							SDL_PushEvent(&event);
+							compteur = 0;
+							continue;
+						}
 					}
 				} else if(event.key.keysym.sym == SDLK_SPACE ){
 					if(compteur == 0) ss_prg_help();
-				} else if(event.key.keysym.sym == SDLK_RETURN ){
-					ss_prg_options(OPTION_MAIN_FIRST, OPTION_MAIN_LAST);
+				} else if(event.key.keysym.sym == SDLK_RETURN ){ // START button
+					if (SDL_GetKeyState(NULL)[SDLK_LSHIFT]) {
+					// apply delete flag roms delete permanently 
+						char romfilepath[MAX_PATH];
+						for(auto onerom : selected_flag_roms) {
+							for(int idr = 0; idr < DIRS_MAX; idr++) {
+								if(!strlen(szAppRomPaths[idr]))
+									continue;
+								sprintf(romfilepath, "%s%s.zip", szAppRomPaths[idr], romlist.zip[onerom]);
+								remove(romfilepath);
+							}
+							romlist.etat[onerom] = ROUGE;
+						}
+						selected_flag_roms.clear();
+						prep_bg_main();
+					}
+					else
+						ss_prg_options(OPTION_MAIN_FIRST, OPTION_MAIN_LAST);
 				}
 			}
 			++compteur;

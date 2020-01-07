@@ -248,7 +248,7 @@ static void save_romsdir_string(const std::string & str)
 
 void gui_sort_romlist()
 {
-options.create_lists = false;
+options.create_lists = 0;
 
 	bool use_last_romlist = false;
 	std::unordered_set<std::string> romset;
@@ -261,7 +261,7 @@ options.create_lists = false;
 
 	std::string curm = get_romsdir_string();
 	std::string past = load_romsdir_string();
-printf("curm: %s\npast: %s\n", curm.c_str(), past.c_str());
+
 	if(!curm.length() || !past.length() || curm !=  past)
 	{
 		use_last_romlist = false;
@@ -378,6 +378,8 @@ unsigned int * gui_get_filtered_romsort(int filter, int hardware, int genre, int
 		current_hardware = hardware;
 		current_genre = genre;
 		current_clone = clone;
+		if (filter == 4 && favorite_changed == 1)
+			favorite_changed = 0;
 		
 		if (romsort != NULL)
 		{
@@ -465,17 +467,27 @@ unsigned int * gui_get_filtered_romsort(int filter, int hardware, int genre, int
 	return romsort;
 }
 
-void gui_add_to_favorite(unsigned int rom)
+void add_to_favorite(unsigned int rom)
 {
 	favorite.insert(rom);
 	favorite_changed = 1;
+}
+
+void gui_add_to_favorite(unsigned int rom)
+{
+	add_to_favorite(rom);
 	save_favorite();
+}
+
+void remove_from_favorite(unsigned int rom)
+{
+	favorite.erase(rom);
+	favorite_changed = 1;
 }
 
 void gui_remove_from_favorite(unsigned int rom)
 {
-	favorite.erase(rom);
-	favorite_changed = 1;
+	remove_from_favorite(rom);
 	save_favorite();
 }
 
