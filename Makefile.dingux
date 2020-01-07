@@ -329,7 +329,7 @@ AS	= mipsel-linux-as
 HOSTCFLAGS = $(incdir)
 CFLAGS   = -O2 -G0 -mips32r2 -pipe -fno-builtin -fno-common -mno-shared -ffast-math \
 		-fomit-frame-pointer -fexpensive-optimizations -Wno-write-strings -DLSB_FIRST
-CXXFLAGS = -O2 -G0 -mips32r2 -pipe -fno-builtin -fno-common -mno-shared -ffast-math \
+CXXFLAGS = -std=gnu++11 -O2 -G0 -mips32r2 -pipe -fno-builtin -fno-common -mno-shared -ffast-math \
 		-fomit-frame-pointer -fexpensive-optimizations -Wno-write-strings -DLSB_FIRST
 
 CFLAGS += -D__cdecl="" -D__fastcall="" -Wno-narrowing

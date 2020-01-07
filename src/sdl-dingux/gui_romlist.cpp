@@ -25,6 +25,9 @@
 #include <set>
 #include <algorithm>
 #include <unordered_set>
+#include <fstream>
+#include <sstream>
+#include <streambuf>
 
 #include <SDL/SDL.h>
 #include <SDL/SDL_image.h>
@@ -201,6 +204,48 @@ static inline void save_last_romlist(std::unordered_set<std::string> & romset)
 	romset.clear();
 }
 
+static std::string get_romsdir_string()
+{
+	char dir_path[MAX_PATH];
+	std::ostringstream ss;
+	for(int i = 0; i < DIRS_MAX; i++) {
+		struct stat stbuf;
+		if(0==stat(szAppRomPaths[i], &stbuf) ) {
+			ss << i << "#" << (uint32_t) stbuf.st_mtime << "$";
+		}
+	}
+	return ss.str();
+}
+
+static std::string load_romsdir_string()
+{
+	char filename[MAX_PATH];
+	sprintf(filename, "%s/romsdirstat.txt", szAppHomePath);
+	std::ifstream t(filename);
+
+	if(!t) return "";
+
+	std::string str;
+
+	t.seekg(0, std::ios::end);
+	str.reserve(t.tellg());
+	t.seekg(0, std::ios::beg);
+
+	str.assign((std::istreambuf_iterator<char>(t)),
+			   std::istreambuf_iterator<char>());
+	return str;
+}
+
+static void save_romsdir_string(const std::string & str)
+{
+	if(!str.length()) return;
+	char filename[MAX_PATH];
+	sprintf(filename, "%s/romsdirstat.txt", szAppHomePath);
+	std::ofstream t(filename);
+	if(!t) return;
+	t << str;
+}
+
 void gui_sort_romlist()
 {
 options.create_lists = false;
@@ -212,6 +257,15 @@ options.create_lists = false;
 		load_last_romlist(romset);
 		if(romset.size())
 			use_last_romlist = true;
+	}
+
+	std::string curm = get_romsdir_string();
+	std::string past = load_romsdir_string();
+printf("curm: %s\npast: %s\n", curm.c_str(), past.c_str());
+	if(!curm.length() || !past.length() || curm !=  past)
+	{
+		use_last_romlist = false;
+		save_romsdir_string(curm);
 	}
 
 	for (int i = 0; i < NB_FILTERS; i++)

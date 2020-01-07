@@ -18,7 +18,7 @@
  */
 
 #include <SDL/SDL.h>
-#include <tr1/unordered_map>
+#include <unordered_map>
 
 #include "burner.h"
 #include "snd.h"
@@ -69,7 +69,7 @@ unsigned char DiagRequest = 0;
 unsigned char ServiceRequest = 0;
 unsigned char TestRequest = 0;
 unsigned char P1P2Start = 0;
-std::tr1::unordered_map<int, int> button_map;
+std::unordered_map<int, int> button_map;
 bool rjoys = false;
 
 // external functions
