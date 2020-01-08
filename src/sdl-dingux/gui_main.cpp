@@ -1856,6 +1856,14 @@ movedown:
 						}
 						save_favorite();
 						selected_flag_roms.clear();
+						if (4 == cfg.list )
+						{
+							sel.y = START_Y - 1;
+							sel.rom = 0;
+							sel.ofs = 0;
+						}
+						// change filtered romsort to other list force update then change back in prep_bg_main()
+						gui_get_filtered_romsort((cfg.list+1)%NB_FILTERS, cfg.hardware, cfg.genre, cfg.clone);
 						prep_bg_main();
 					}
 					else {
