@@ -104,7 +104,7 @@ alldir	= burn \
 
 incdir	= $(foreach dir,$(alldir),-I$(srcdir)$(dir)) -I$(objdir)dep/generated
 
-lib = -lstdc++ -lSDL -lSDL_image -lz
+lib = -lstdc++ -lSDL -lSDL_image -lz -lpng
 
 ifdef USE_LIBAO
 	lib += -lao

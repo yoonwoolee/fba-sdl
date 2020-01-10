@@ -21,6 +21,11 @@
 #include <string.h>
 #include <sys/time.h>
 #include <SDL/SDL.h>
+#include <SDL/SDL_image.h>
+#include <vector>
+#include <fstream>
+#include <avir.h>
+#include <png++/png.hpp>
 
 #include "version.h"
 #include "burner.h"
@@ -28,6 +33,7 @@
 #include "sdl_run.h"
 #include "sdl_video.h"
 #include "sdl_input.h"
+#include "gui_gfx.h"
 
 #ifdef FBA_DEBUG
 #include "m68000_intf.h"
@@ -90,10 +96,60 @@ static inline inGameScreen_t * CopyScreen(SDL_Surface * src)
 	return savescreen;
 }
 
+void pngsave(const char * filename, uint16_t * rgb565, int w, int h, int outw, int outh)
+{
+	if(w <= 0 || h <= 0 || !rgb565 || !filename || outw <= 0 || outh <= 0)
+		return;
+	try {
+		const size_t ow = outw;
+		const size_t oh = outh;
+		png::image< png::rgb_pixel,png::solid_pixel_buffer<png::rgb_pixel> > img(ow,oh);
+		const int npixels = w * h;
+		std::vector<uint8_t> imgu8(npixels * 3);
+		// We have to convert from RGB565 to RGB each coded on uint8 because PNG doesn't support RGB565
+		for (int i = 0; i < npixels; ++i) {
+			const uint16_t v = rgb565[i];
+			// Convert and rescale to the full 0-255 range
+			// See http://stackoverflow.com/a/29326693
+			const uint8_t red5 = (v & 0xF800) >> 11;
+			const uint8_t green6 = (v & 0x7E0) >> 5;
+			const uint8_t blue5 = (v & 0x001F);
+			imgu8[3 * i] = ((red5 * 255 + 15) / 31);
+			imgu8[3 * i + 1] = ((green6 * 255 + 31) / 63);
+			imgu8[3 * i + 2] = ((blue5 * 255 + 15) / 31);
+		}
+		avir :: CImageResizer<> imageResizer( 8 );
+		uint8_t * Inbuf = (uint8_t *)imgu8.data();
+		uint8_t * Outbuf = (uint8_t *)img.get_pixbuf().get_bytes().data();
+		imageResizer.resizeImage( Inbuf, w, h, 0, Outbuf, ow, oh, 3, 0 );
+		img.write(filename);
+	}
+	catch(std::exception const& error)
+	{
+		std::cerr << "png++ err: " << error.what() << std::endl;
+		return;
+	}
+}
+
 #define SP_SCREEN_W 320
 #define SP_SCREEN_H 240
+#define SP_PREVIEW_W 190
+#define SP_PREVIEW_H 112
 #define SP_PIC_W (SP_SCREEN_W/2)
 #define SP_PIC_H (SP_SCREEN_H/2)
+
+void pngpreview_save(const char * filename, uint16_t * rgb565, int w, int h)
+{
+	pngsave(filename, rgb565, w, h, SP_PREVIEW_W, SP_PREVIEW_H);
+}
+
+void pngfullscreen_save(const char * filename, uint16_t * rgb565, int w, int h)
+{
+	pngsave(filename, rgb565, w, h, SP_SCREEN_W, SP_SCREEN_H);
+}
+
+static SDL_Surface * last_stpv = NULL;
+static int last_stpvslot = -1;
 
 void save_state_preview(bool ingame)
 {
@@ -102,39 +158,54 @@ void save_state_preview(bool ingame)
 	uint16_t sbuf[SP_PIC_W+8];
 	memset(sbuf,0,sizeof(sbuf));
 	uint16_t * p = NULL;
-	int screen_w = 0, screen_h = 0;
+	int w = 0, h = 0;
 	if( ingame ) {
 		p = (uint16_t *) screen->pixels;
-		screen_w = screen->w;
-		screen_h = screen->h;
+		w = screen->w;
+		h = screen->h;
 	} else {
 		p = (uint16_t *) inGameScreen->pixels;
-		screen_w = inGameScreen->w;
-		screen_h = inGameScreen->h;
+		w = inGameScreen->w;
+		h = inGameScreen->h;
 	}
-	if (!p || !screen_w || !screen_h )
+	if (!p || w <= 0 || h <= 0 )
 		return;
 	char sp_path[MAX_PATH];
-	sprintf(sp_path, "%s/%s%i.spreview", szAppSavePath, BurnDrvGetText(DRV_NAME), nSavestateSlot);
-	FILE * fp = fopen(sp_path, "wb");
-	if(fp) {
-		int w = screen_w/2;
-		w = (w<SP_PIC_W)? w : SP_PIC_W;
-		int h = screen_h/2;
-		h = (h<SP_PIC_H)? h : SP_PIC_H;
-		for(int y=0; y<h; y++, p+=screen_w*2)
-		{
-			for(int x=0; x<w; x++)
-				sbuf[x] = p[x*2];
-			fwrite(sbuf, 1, SP_PIC_W*2, fp);
+	sprintf(sp_path, "%s/%s%i.png", szAppSavePath, BurnDrvGetText(DRV_NAME), nSavestateSlot);
+	pngfullscreen_save(sp_path, p, w, h);
+	sprintf(sp_path, "%s/%s%ip.png", szAppSavePath, BurnDrvGetText(DRV_NAME), nSavestateSlot);
+	pngpreview_save(sp_path, p, w, h);
+	last_stpvslot = -1; //force reload png
+}
+
+void Show_state_preview()
+{
+#define SPREVIEW_LOC_X 0
+#define SPREVIEW_LOC_Y 0
+	char sp_path[MAX_PATH];
+	if(!(last_stpv && last_stpvslot==nSavestateSlot))
+	{
+		if(last_stpv ) {
+			SDL_FreeSurface(last_stpv);
+			last_stpv = NULL;
 		}
-		memset(sbuf,0,SP_PIC_W*2);
-		for(int y=h; y<SP_PIC_H; y++)
-			fwrite(sbuf, 1, SP_PIC_W*2, fp);
-		memset(sbuf,0,16);
-		fwrite(sbuf,1,16,fp);
-		fclose(fp);
+		sprintf(sp_path, "%s/%s%i.png", szAppSavePath, BurnDrvGetText(DRV_NAME), nSavestateSlot);
+		last_stpv = IMG_Load(sp_path);
+		last_stpvslot = nSavestateSlot;
 	}
+	if(last_stpv)
+		drawSprite(last_stpv, menuSurface, 0, 0, SPREVIEW_LOC_X, SPREVIEW_LOC_Y, SP_SCREEN_W, SP_SCREEN_H);
+}
+
+void Show_real_preview()
+{
+#define RPREVIEW_LOC_X (220 - preview->w / 2)
+#define RPREVIEW_LOC_Y 56
+	char sp_path[MAX_PATH];
+	sprintf((char*)sp_path, "%s/%s.png", szAppPreviewPath, BurnDrvGetText(DRV_NAME));
+	extern SDL_Surface *preview;
+	if(!preview) return;
+		drawSprite(preview, menuSurface, 0, 0, RPREVIEW_LOC_X, RPREVIEW_LOC_Y, SP_PREVIEW_W, SP_PREVIEW_H);
 }
 
 /* prototypes */
@@ -147,6 +218,7 @@ static void gui_KeyMenuRun();
 static void gui_AutofireMenuRun();
 static void gui_help();
 static void gui_reset();
+static void gui_SavePreview();
 
 /* data definitions */
 char *gui_KeyNames[] = {"A", "B", "X", "Y", "L", "R"};
@@ -164,13 +236,14 @@ MENUITEM gui_MainMenuItems[] = {
 	{(char *)"Autofire config", NULL, 0, NULL, &gui_AutofireMenuRun},
 	{(char *)"Load state: ", &nSavestateSlot, 9, NULL, &gui_LoadState},
 	{(char *)"Save state: ", &nSavestateSlot, 9, NULL, &gui_Savestate},
+	{(char *)"Save as preview", NULL, 0, NULL, &gui_SavePreview},
 	{(char *)"Help", NULL, 0, NULL, &gui_help},
 	{(char *)"Reset", NULL, 0, NULL, &gui_reset},
 	{(char *)"Exit", NULL, 0, NULL, &call_exit},
 	{NULL, NULL, 0, NULL, NULL}
 };
 
-MENU gui_MainMenu = { 8, 0, (MENUITEM *)&gui_MainMenuItems };
+MENU gui_MainMenu = { 9, 0, (MENUITEM *)&gui_MainMenuItems };
 
 MENUITEM gui_KeyMenuItems[] = {
 	{(char *)"Fire 1   - ", &gui_KeyData[0], 5, (char **)&gui_KeyNames, NULL},
@@ -277,36 +350,15 @@ void ShowHeader()
 	DrawString("Based on FBA " VERSION " (c) Team FB Alpha", COLOR_HELP_TEXT, COLOR_BG, 0, 12);
 }
 
-void Show_state_preview()
-{
-	char sp_path[MAX_PATH];
-	static uint16_t spreview_buf[SP_PIC_W*SP_PIC_H+8];
-	sprintf(sp_path, "%s/%s%i.spreview", szAppSavePath, BurnDrvGetText(DRV_NAME), nSavestateSlot);
-	FILE * fp = fopen(sp_path, "rb");
-	if(fp) {
-		fread(spreview_buf, 1, SP_PIC_W * SP_PIC_H * 2, fp);
-		fclose(fp);
-	}
-	else {
-		memset(spreview_buf, 0, sizeof(spreview_buf));
-	}
-#define SPREVIEW_LOC_X 150
-#define SPREVIEW_LOC_Y 48
-	uint16_t * dest = (uint16_t *) menuSurface->pixels;
-	dest += SP_SCREEN_W*SPREVIEW_LOC_Y;
-	dest += SPREVIEW_LOC_X ;
-	uint16_t * sline_buf = spreview_buf;
-	for(int y=0; y<SP_PIC_H; ++y, dest += SP_SCREEN_W, sline_buf += SP_PIC_W)
-	{
-		memcpy(dest, sline_buf, SP_PIC_W*2);
-	}
-}
-
 void ShowPreview(MENU *menu)
 {
 	if(menu == &gui_MainMenu)
+	{
 		if(menu->itemCur==3 || menu->itemCur==4)
 			Show_state_preview();
+		if(menu->itemCur==5)
+			Show_real_preview();
+	}
 }
 /*
 	Shows menu items and pointing arrow
@@ -318,6 +370,9 @@ void ShowMenu(MENU *menu)
 
 	// clear buffer
 	SDL_FillRect(menuSurface, NULL, COLOR_BG);
+
+	// show preview screen
+	ShowPreview(menu);
 
 	// show menu lines
 	int startline = menu == &gui_AutofireMenu ? 11 : 12;
@@ -331,8 +386,6 @@ void ShowMenu(MENU *menu)
 	// print info string
 	ShowHeader();
 
-	// show preview screen
-	ShowPreview(menu);
 }
 
 /*
@@ -445,6 +498,35 @@ static void gui_help()
 
 }
 
+static inline void copy_file( const char* srce_file, const char* dest_file )
+{
+	try {
+		std::ifstream srce( srce_file, std::ios::binary ) ;
+		std::ofstream dest( dest_file, std::ios::binary ) ;
+		dest << srce.rdbuf() ;
+	}
+	catch( const std::exception& e )
+	{
+		std::cerr << "copy_file() err: " << e.what() << '\n' ;
+	}
+}
+
+static void gui_SavePreview()
+{
+	char sp_path[MAX_PATH];
+	sprintf(sp_path, "%s/%s%ip.png", szAppSavePath, BurnDrvGetText(DRV_NAME), nSavestateSlot);
+	if( access(sp_path, R_OK) ) return;
+	char pv_path[MAX_PATH];
+	sprintf((char*)pv_path, "%s/%s.png", szAppPreviewPath, BurnDrvGetText(DRV_NAME));
+	copy_file(sp_path, pv_path);
+	// load new preview
+	extern void load_preview(unsigned int numero);
+	extern int last_numero;
+	int n = last_numero;
+	last_numero = -1;
+	load_preview(n);
+}
+
 static void gui_reset()
 {
 	DrvInitCallback();
@@ -502,7 +584,12 @@ void gui_Run()
 void gui_Exit()
 {
 	if(menuSurface) SDL_FreeSurface(menuSurface);
-	if(inGameScreen) { free(inGameScreen); inGameScreen = NULL; }
+	if(last_stpv) SDL_FreeSurface(last_stpv);
+	if(inGameScreen) free(inGameScreen);
+	last_stpvslot = -1;
+	menuSurface = NULL;
+	last_stpv = NULL;
+	inGameScreen = NULL;
 }
 
 #ifdef FBA_DEBUG

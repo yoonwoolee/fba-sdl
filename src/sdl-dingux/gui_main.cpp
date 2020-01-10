@@ -230,7 +230,7 @@ void put_stringM(char *string, unsigned int pos_x, unsigned int pos_y, unsigned 
 	put_string( "Set Keys" , 142 , CREDIT_Y+8 , BLANC , credit );
 	put_string( text , CREDIT_X+8 , CREDIT_Y+24 , BLEU , credit );
 }*/
-
+int last_numero = -1;
 
 void load_preview(unsigned int numero)
 {
@@ -238,6 +238,13 @@ void load_preview(unsigned int numero)
 		flag_preview = 0;
 		return;
 	}
+	if(preview) {
+		if(last_numero==numero)
+			return;
+		SDL_FreeSurface(preview);
+		preview = NULL;
+	}
+	last_numero = numero;
 
 	char *ext[2] = {"png", "bmp"};
 	FILE *fp;
@@ -246,9 +253,7 @@ void load_preview(unsigned int numero)
 		sprintf((char*)g_string, "%s/%s.%s", szAppPreviewPath, ROMLIST(zip, numero), ext[i]);
 
 		// check first current rom
-		if((fp = fopen(g_string, "r")) != NULL) {
-			fclose(fp);
-			preview = IMG_Load(g_string);
+		if((preview = IMG_Load(g_string)) != NULL) {
 			drawSprite(bg, bg_temp, 124, 3, 124, 3, 192, 112);
 			drawSprite(preview, bg_temp, 0, 0, 220 - preview->w / 2, 3, 192, 112);
 
@@ -260,15 +265,23 @@ void load_preview(unsigned int numero)
 		if(strcmp(ROMLIST(parent, numero), "fba") != 0) {
 			sprintf((char*)g_string, "%s/%s.%s", szAppPreviewPath, ROMLIST(parent, numero), ext[i]);
 
-			if((fp = fopen(g_string, "r")) != NULL) {
-				fclose(fp);
-				preview = IMG_Load(g_string);
+			if((preview = IMG_Load(g_string)) != NULL) {
 				drawSprite(bg, bg_temp, 124, 3, 124, 3, 192, 112);
 				drawSprite(preview, bg_temp, 0, 0, 220 - preview->w / 2, 3, 192, 112);
 
 				flag_preview = 1;
 				return;
 			} 
+		}
+		if(0==i) for(int j=9; j>=0; --j) {
+			sprintf((char*)g_string, "%s/%s%ip.png", szAppSavePath, ROMLIST(zip, numero),j);
+			if((preview = IMG_Load(g_string)) != NULL) {
+				drawSprite(bg, bg_temp, 124, 3, 124, 3, 192, 112);
+				drawSprite(preview, bg_temp, 0, 0, 220 - preview->w / 2, 3, 192, 112);
+
+				flag_preview = 1;
+				return;
+			}
 		}
 	}
 
@@ -1871,6 +1884,8 @@ movedown:
 						if(romlist.nb_list[cfg.list] != 0 && ROMLIST(etat, sel.rom) != ROUGE) {
 							ss_prog_run();
 							prep_bg_main();
+							last_numero = -1; // force reload preview picture
+							load_preview(sel.rom);
 
 							// flush event queue
 							while(SDL_PollEvent(&event));
