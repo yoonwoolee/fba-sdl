@@ -302,8 +302,8 @@ void do_keypad()
 			keypc &= ~BUTTON_Y;
 		} else if (keypc & BUTTON_B && !bRunPause) {
 			StatedSave(nSavestateSlot);
-			extern void save_state_preview(bool);
-			save_state_preview(true);
+			extern void save_state_preview(bool,bool);
+			save_state_preview(true,false);
 			keypc &= ~BUTTON_B;
 		} else if (keypc & BUTTON_A && !bRunPause) {
 			StatedLoad(nSavestateSlot);

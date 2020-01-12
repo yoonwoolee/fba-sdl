@@ -616,8 +616,13 @@ void gui_menu_key_init()
 	gui_menu_key_values.push_back(SDLK_BACKSPACE);
 	gui_menu_key_labels[SDLK_LCTRL]     = "A";
 	gui_menu_key_labels[SDLK_LALT]      = "B";
+#ifdef GCW0_BTN_LAYOUT
 	gui_menu_key_labels[SDLK_SPACE]     = "Y";
 	gui_menu_key_labels[SDLK_LSHIFT]    = "X";
+#else
+	gui_menu_key_labels[SDLK_SPACE]     = "X";
+	gui_menu_key_labels[SDLK_LSHIFT]    = "Y";
+#endif
 	gui_menu_key_labels[SDLK_TAB]       = "L";
 	gui_menu_key_labels[SDLK_BACKSPACE] = "R";
 }

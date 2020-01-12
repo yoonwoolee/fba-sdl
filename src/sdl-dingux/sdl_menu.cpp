@@ -151,12 +151,12 @@ void pngfullscreen_save(const char * filename, uint16_t * rgb565, int w, int h)
 static SDL_Surface * last_stpv = NULL;
 static int last_stpvslot = -1;
 
-void save_state_preview(bool ingame)
+void save_state_preview(bool ingame, bool preview_only=false);
+
+void save_state_preview(bool ingame, bool preview_only)
 {
 	if(!ingame && NULL==inGameScreen)
 		return;
-	uint16_t sbuf[SP_PIC_W+8];
-	memset(sbuf,0,sizeof(sbuf));
 	uint16_t * p = NULL;
 	int w = 0, h = 0;
 	if( ingame ) {
@@ -171,11 +171,14 @@ void save_state_preview(bool ingame)
 	if (!p || w <= 0 || h <= 0 )
 		return;
 	char sp_path[MAX_PATH];
-	sprintf(sp_path, "%s/%s%i.png", szAppSavePath, BurnDrvGetText(DRV_NAME), nSavestateSlot);
-	pngfullscreen_save(sp_path, p, w, h);
+	if(!preview_only)
+	{
+		sprintf(sp_path, "%s/%s%i.png", szAppSavePath, BurnDrvGetText(DRV_NAME), nSavestateSlot);
+		pngfullscreen_save(sp_path, p, w, h);
+		last_stpvslot = -1; //force reload png
+	}
 	sprintf(sp_path, "%s/%s%ip.png", szAppSavePath, BurnDrvGetText(DRV_NAME), nSavestateSlot);
 	pngpreview_save(sp_path, p, w, h);
-	last_stpvslot = -1; //force reload png
 }
 
 void Show_state_preview()
@@ -221,7 +224,11 @@ static void gui_reset();
 static void gui_SavePreview();
 
 /* data definitions */
+#ifdef GCW0_BTN_LAYOUT
+char *gui_KeyNames[] = {"A", "B", "Y", "X", "L", "R"};
+#else
 char *gui_KeyNames[] = {"A", "B", "X", "Y", "L", "R"};
+#endif
 int gui_KeyData[] = {0, 1, 2, 3, 4, 5};
 int gui_KeyValue[] = {SDLK_LCTRL, SDLK_LALT, SDLK_SPACE, SDLK_LSHIFT, SDLK_TAB, SDLK_BACKSPACE};
 char *gui_SoundDrvNames[] = {"No sound", "LIBAO", "SDL mutex", "SDL"};
@@ -474,7 +481,12 @@ static void gui_help()
 	DrawString("START        Start1", COLOR_INACTIVE_ITEM, COLOR_BG, x, row++ * row_size);
 	DrawString("SELECT+START Start2", COLOR_INACTIVE_ITEM, COLOR_BG, x, row++ * row_size);
 	DrawString("A,B,X,Y,L,R  Fire buttons", COLOR_INACTIVE_ITEM, COLOR_BG, x, row++ * row_size);
-	DrawString("L+R+Y        Show/hide fps", COLOR_INACTIVE_ITEM, COLOR_BG, x, (++row)++ * row_size);
+#ifdef GCW0_BTN_LAYOUT
+#define SHOW_FPS_LR		"L+R+X        Show/hide fps"
+#else
+#define SHOW_FPS_LR		"L+R+Y        Show/hide fps"
+#endif
+	DrawString(SHOW_FPS_LR, COLOR_INACTIVE_ITEM, COLOR_BG, x, (++row)++ * row_size);
 	DrawString("L+R+A        Quick load", COLOR_INACTIVE_ITEM, COLOR_BG, x, row++ * row_size);
 	DrawString("L+R+B        Quick save", COLOR_INACTIVE_ITEM, COLOR_BG, x, row++ * row_size);
 	DrawString("L+R+SELECT   Service menu", COLOR_INACTIVE_ITEM, COLOR_BG, x, row++ * row_size);
@@ -514,11 +526,24 @@ static inline void copy_file( const char* srce_file, const char* dest_file )
 static void gui_SavePreview()
 {
 	char sp_path[MAX_PATH];
-	sprintf(sp_path, "%s/%s%ip.png", szAppSavePath, BurnDrvGetText(DRV_NAME), nSavestateSlot);
-	if( access(sp_path, R_OK) ) return;
 	char pv_path[MAX_PATH];
+	sprintf(sp_path, "%s/%s%ip.png", szAppSavePath, BurnDrvGetText(DRV_NAME), nSavestateSlot);
+	if( access(sp_path, R_OK) ) {
+		save_state_preview(false, true);
+		if( access(sp_path, R_OK) )
+			return;
+	} else {
+		sprintf(pv_path, "%s/%s%i.sav", szAppSavePath, BurnDrvGetText(DRV_NAME), nSavestateSlot);
+		if( access(pv_path, R_OK) ) { // no save state, aways try create preview by paused game picture
+			save_state_preview(false, true);
+			if( access(sp_path, R_OK) )
+				return;
+		}
+	}
 	sprintf((char*)pv_path, "%s/%s.png", szAppPreviewPath, BurnDrvGetText(DRV_NAME));
 	copy_file(sp_path, pv_path);
+	if( access(pv_path, R_OK) )
+		return;
 	// load new preview
 	extern void load_preview(unsigned int numero);
 	extern int last_numero;
