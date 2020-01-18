@@ -27,6 +27,7 @@
 #include <map>
 #include <vector>
 #include <unordered_set>
+#include <unordered_map>
 
 #include <SDL/SDL.h>
 #include <SDL/SDL_image.h>
@@ -38,8 +39,11 @@
 #include "gui_romlist.h"
 #include "gui_config.h"
 #include "gui_setpath.h"
+#include "gui_language_pack.h"
 
 #define ROMLIST(A,B) romlist.A[gui_get_filtered_romsort(cfg.list, cfg.hardware, cfg.genre, cfg.clone)[B]]
+#define GUI_SCREEN_W 320
+#define GUI_SCREEN_H 240
 
 SDL_Event event;
 
@@ -54,6 +58,7 @@ SDL_Surface *title = NULL;
 SDL_Surface *help = NULL;
 SDL_Surface *credit = NULL;
 SDL_Surface *Tmp = NULL;
+static SDL_Surface * lang_fontsurf = NULL;
 
 FILE *fp;
 FILE *fp2;
@@ -64,6 +69,14 @@ unsigned char flag_preview;
 char g_string[255];
 char g_message[255];
 unsigned char offset_x, offset_y;
+bool use_language_pack = false;
+typedef struct lang_t{
+	uint32_t gamelist_line_height;
+	uint32_t gamelist_line_count;
+	uint32_t gamelist_line_count_half;
+} lang_t;
+
+lang_t gui_lang = {LINE_HEIGHT, LINES_COUNT, LINES_COUNT_HALF};
 
 typedef struct selector {
 	int y;
@@ -112,6 +125,7 @@ void free_memory(void)
 	SDL_FreeSurface(title);
 	SDL_FreeSurface(help);
 	SDL_FreeSurface(credit);
+	if(lang_fontsurf) SDL_FreeSurface(lang_fontsurf);
 	//printf("Freeing memory\n");
 	/*for (ii=0;ii<romlist.nb_list[0];++ii){
 		free(romlist.name[ii]);
@@ -154,8 +168,6 @@ void put_string(char *string, unsigned int pos_x, unsigned int pos_y, unsigned c
 		pos_x += 6;
 	}
 }
-
-
 
 void put_stringM(char *string, unsigned int pos_x, unsigned int pos_y, unsigned int taille, unsigned char couleur)
 {
@@ -206,6 +218,41 @@ void put_stringM(char *string, unsigned int pos_x, unsigned int pos_y, unsigned 
 			}
 		}
 	}
+}
+
+static std::unordered_map<uint32_t, uint32_t> idx2RGBAcolor = {
+	{BLANC,		0xFFFFFFFF}, // white
+	{ROUGE,		0xFF0000FF}, // read
+	{ORANGE,	0xFF00A5FF},
+	{JAUNE,		0xFF00FFFF}, // yellow
+	{VERT,		0xFF00FF00}, // green
+	{BLEU,		0xFFFF0000}  // blue
+};
+
+static inline bool prepare_fontsurf()
+{
+	// RGBA 32 bits
+	if(!lang_fontsurf) {
+		lang_fontsurf = SDL_CreateRGBSurface(0, GUI_SCREEN_W, GUI_SCREEN_H,
+											 32, 0x000000ff, 0x0000ff00, 0x00ff0000, 0xff000000);
+		if(!lang_fontsurf) return false;
+	}
+	SDL_FillRect(lang_fontsurf, NULL, RGBA_TRANSPARENT);
+	return true;
+}
+
+void lang_put_stringM( uint32_t romID, unsigned int pos_x, unsigned int pos_y, unsigned char coloridx )
+{
+	if(romID>=nBurnDrvCount || pos_x<0 || pos_y<0 || !idx2RGBAcolor.count(coloridx))
+		return;
+
+	lang_DrawString( romID, (uint32_t *)lang_fontsurf->pixels, pos_x, pos_y, GUI_SCREEN_W, idx2RGBAcolor[coloridx] );
+}
+
+static inline void lang_show_gamelist_lines()
+{
+	if( lang_fontsurf )
+		SDL_BlitSurface(lang_fontsurf, NULL, gui_screen, NULL);
 }
 
 /*void show_screen(char * text)
@@ -893,7 +940,7 @@ void gui_validate_selection()
 {
 	gui_get_filtered_romsort(cfg.list, cfg.hardware, cfg.genre, cfg.clone); // apply filters
 	if (sel.rom < 0 || sel.ofs < 0 ||
-		sel.y < START_Y - 1 || sel.y > START_Y + (LINES_COUNT - 1) * LINE_HEIGHT ||
+		sel.y < START_Y - 1 || sel.y > START_Y + (gui_lang.gamelist_line_count - 1) * gui_lang.gamelist_line_height ||
 		sel.rom > romlist.nb_list[cfg.list] - 1 ||
 		sel.ofs > romlist.nb_list[cfg.list] - 1)
 	{
@@ -1613,11 +1660,26 @@ void load_lastsel()
 	gui_validate_selection();
 }
 
+void set_language()
+{
+	// default lang English
+	gui_lang.gamelist_line_height = LINE_HEIGHT;
+	gui_lang.gamelist_line_count = LINES_COUNT;
+	gui_lang.gamelist_line_count_half = LINES_COUNT_HALF;
+	if(!use_language_pack) return;
+
+	extern size_t pixfont_height;
+	if(!pixfont_height)
+		return;
+	gui_lang.gamelist_line_height = pixfont_height;
+	gui_lang.gamelist_line_count = (LINE_HEIGHT * LINES_COUNT+pixfont_height-1) / gui_lang.gamelist_line_height;
+	gui_lang.gamelist_line_count_half = gui_lang.gamelist_line_count / 2;
+}
+
 void gui_menu_main()
 {
 	int Quit;
-	unsigned int zipnum;
-	unsigned int y;
+	unsigned int romlist_y;
 	unsigned int compteur = 0;
 	std::unordered_set<int> selected_flag_roms;
 
@@ -1633,40 +1695,57 @@ void gui_menu_main()
 	load_preview(sel.rom);
 
 	//load_cf();
+	int barre_offset = use_language_pack? (gui_lang.gamelist_line_height-10)/2 : 0;
 
 	Quit = 0;
 	while(!Quit) {
 		affiche_BG();
 
 		if (romlist.nb_list[cfg.list] != 0) {
-			drawSprite(barre, gui_screen, 0, 0, 4, sel.y, 312, 10);
+			drawSprite(barre, gui_screen, 0, 0, 4, sel.y+barre_offset, 312, 10);
 		}
 
 		// show rom list
-		zipnum = START_Y;
-		if(romlist.nb_list[cfg.list] <= LINES_COUNT) {
-			for(y = 0; y < romlist.nb_list[cfg.list]; ++y) {
-				bool df_color = selected_flag_roms.count(
-					gui_get_filtered_romsort(cfg.list, cfg.hardware, cfg.genre, cfg.clone)[y]);
-				put_stringM(ROMLIST(name, y), // string
+		if(use_language_pack) 
+			prepare_fontsurf();
+		romlist_y = START_Y;
+		if(romlist.nb_list[cfg.list] <= gui_lang.gamelist_line_count) {
+			for(unsigned int fID = 0; fID < romlist.nb_list[cfg.list]; ++fID) {
+				int romID = gui_get_filtered_romsort(cfg.list, cfg.hardware, cfg.genre, cfg.clone)[fID];
+				bool df_color = selected_flag_roms.count(romID);
+				if(!use_language_pack)
+					put_stringM(ROMLIST(name, fID), // string
 						START_X, // x
-						zipnum, // y
-						ROMLIST(longueur, y), // length
-						df_color? BLANC : ROMLIST(etat, y)); // color
-				zipnum += LINE_HEIGHT;
+						romlist_y, // y
+						ROMLIST(longueur, fID), // length
+						df_color? BLANC : ROMLIST(etat, fID)); // color
+				else
+					lang_put_stringM(romID,
+						START_X, // x
+						romlist_y, // y
+						df_color? BLANC : ROMLIST(etat, fID)); // color
+				romlist_y += gui_lang.gamelist_line_height;
 			}
 		} else {
-			for(y = sel.ofs; y < sel.ofs + LINES_COUNT; ++y) {
-				bool df_color = selected_flag_roms.count(
-					gui_get_filtered_romsort(cfg.list, cfg.hardware, cfg.genre, cfg.clone)[y]);
-				put_stringM(ROMLIST(name, y), 
+			for(unsigned int fID = sel.ofs; fID < sel.ofs + gui_lang.gamelist_line_count; ++fID) {
+				int romID = gui_get_filtered_romsort(cfg.list, cfg.hardware, cfg.genre, cfg.clone)[fID];
+				bool df_color = selected_flag_roms.count(romID);
+				if(!use_language_pack)
+					put_stringM(ROMLIST(name, fID), 
 						START_X, 
-						zipnum, 
-						ROMLIST(longueur, y), 
-						df_color? BLANC : ROMLIST(etat, y));
-				zipnum += LINE_HEIGHT;
+						romlist_y, 
+						ROMLIST(longueur, fID), 
+						df_color? BLANC : ROMLIST(etat, fID));
+				else
+					lang_put_stringM(romID,
+						START_X, // x
+						romlist_y, // y
+						df_color? BLANC : ROMLIST(etat, fID)); // color
+				romlist_y += gui_lang.gamelist_line_height;
 			}
 		}
+		if(use_language_pack) 
+			lang_show_gamelist_lines();
 
 		redraw_screen();
 
@@ -1693,15 +1772,16 @@ pageup:
 							prep_bg_main();
 							gui_write_cfg();
 						}
-					} else if (romlist.nb_list[cfg.list] > LINES_COUNT) {
-						sel.rom -= LINES_COUNT;
-						if(sel.rom > LINES_COUNT_HALF) {
-							sel.ofs = sel.rom - LINES_COUNT_HALF;
-							sel.y = START_Y - 1 + LINES_COUNT_HALF * LINE_HEIGHT;
+					} else if (romlist.nb_list[cfg.list] > gui_lang.gamelist_line_count) {
+						sel.rom -= gui_lang.gamelist_line_count;
+						if(sel.rom > gui_lang.gamelist_line_count_half) {
+							sel.ofs = sel.rom - gui_lang.gamelist_line_count_half;
+							sel.y = START_Y - 1 + gui_lang.gamelist_line_count_half * gui_lang.gamelist_line_height;
 						} else {
 							sel.ofs = sel.rom = 0;
 							sel.y = START_Y - 1;
 						}
+						gui_validate_selection();
 					}
 				} else if(event.key.keysym.sym == SDLK_BACKSPACE) { // page down
 pagedown:
@@ -1714,15 +1794,15 @@ pagedown:
 							prep_bg_main();
 							gui_write_cfg();
 						}
-					} else if (romlist.nb_list[cfg.list] > LINES_COUNT) {
-						sel.rom += LINES_COUNT;
-						if(sel.rom < romlist.nb_list[cfg.list] - LINES_COUNT_HALF) {
-							sel.ofs = sel.rom - LINES_COUNT_HALF;
-							sel.y = START_Y - 1 + LINES_COUNT_HALF * LINE_HEIGHT;
+					} else if (romlist.nb_list[cfg.list] > gui_lang.gamelist_line_count) {
+						sel.rom += gui_lang.gamelist_line_count;
+						if(sel.rom < romlist.nb_list[cfg.list] - gui_lang.gamelist_line_count_half) {
+							sel.ofs = sel.rom - gui_lang.gamelist_line_count_half;
+							sel.y = START_Y - 1 + gui_lang.gamelist_line_count_half * gui_lang.gamelist_line_height;
 						} else {
 							sel.rom = romlist.nb_list[cfg.list] - 1;
-							sel.ofs = sel.rom - (LINES_COUNT - 1);
-							sel.y = START_Y - 1 + (LINES_COUNT - 1) * LINE_HEIGHT;
+							sel.ofs = sel.rom - (gui_lang.gamelist_line_count - 1);
+							sel.y = START_Y - 1 + (gui_lang.gamelist_line_count - 1) * gui_lang.gamelist_line_height;
 						}
 					}
 				} else if(event.key.keysym.sym == SDLK_DOWN) {
@@ -1745,16 +1825,17 @@ pagedown:
 movedown:
 						if (romlist.nb_list[cfg.list] < 14) { // if rom number in list < 14
 								if (sel.rom < romlist.nb_list[cfg.list] - 1) {
-									sel.y += LINE_HEIGHT;
+									sel.y += gui_lang.gamelist_line_height;
 									++sel.rom;
 									if(compteur == 0) {
 										load_preview(sel.rom);
 									}
 								}
 						}else{
-							if (sel.rom < LINES_COUNT_HALF || sel.ofs == (romlist.nb_list[cfg.list] - LINES_COUNT)) {
+							if (sel.rom < gui_lang.gamelist_line_count_half ||
+									sel.ofs == (romlist.nb_list[cfg.list] - gui_lang.gamelist_line_count)) {
 								if (sel.rom < (romlist.nb_list[cfg.list] - 1)) {
-									sel.y += LINE_HEIGHT;
+									sel.y += gui_lang.gamelist_line_height;
 									++sel.rom;
 									if(compteur == 0) {
 										load_preview(sel.rom);
@@ -1783,17 +1864,17 @@ movedown:
 					} else if (romlist.nb_list[cfg.list] == 0) {
 					} else if (sel.rom == 0 && compteur == 0) {
 						sel.rom = romlist.nb_list[cfg.list] - 1;
-						if (romlist.nb_list[cfg.list] < LINES_COUNT) {
-							sel.y = START_Y - 1 + ((romlist.nb_list[cfg.list] - 1) * LINE_HEIGHT);
+						if (romlist.nb_list[cfg.list] < gui_lang.gamelist_line_count) {
+							sel.y = START_Y - 1 + ((romlist.nb_list[cfg.list] - 1) * gui_lang.gamelist_line_height);
 							//sel.ofs = 0;
 						} else {
-							sel.y = START_Y - 1 + ((LINES_COUNT - 1) * LINE_HEIGHT);
-							sel.ofs = romlist.nb_list[cfg.list] - LINES_COUNT;
+							sel.y = START_Y - 1 + ((gui_lang.gamelist_line_count - 1) * gui_lang.gamelist_line_height);
+							sel.ofs = romlist.nb_list[cfg.list] - gui_lang.gamelist_line_count;
 						}
 					} else {
-						if(sel.rom > romlist.nb_list[cfg.list] - LINES_COUNT_HALF || sel.ofs == 0) {
+						if(sel.rom > romlist.nb_list[cfg.list] - gui_lang.gamelist_line_count_half || sel.ofs == 0) {
 							if(sel.rom > 0) {
-								sel.y -= LINE_HEIGHT;
+								sel.y -= gui_lang.gamelist_line_height;
 								--sel.rom;
 								if(compteur == 0) {
 									load_preview(sel.rom);
@@ -1941,8 +2022,10 @@ void GuiRun()
 {
 	// fill data with data
 	gui_sort_romlist();
+	use_language_pack = gui_load_language_pack();
+	set_language();
 
-	gui_screen = SDL_SetVideoMode(320, 240, 16, SDL_SWSURFACE);
+	gui_screen = SDL_SetVideoMode(GUI_SCREEN_W, GUI_SCREEN_H, 16, SDL_SWSURFACE);
 
 	SDL_ShowCursor(0);
 	SDL_JoystickOpen(0);

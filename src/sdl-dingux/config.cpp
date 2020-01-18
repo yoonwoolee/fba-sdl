@@ -152,6 +152,7 @@ int ConfigAppSave()
 
 void ConfigGameDefault()
 {
+	printf("ConfigGameDefault\n");
 	if (ConfigGameLoadDefault()) {
 		printf("ConfigGameLoadDefault true\n");
 		return;
