@@ -155,7 +155,7 @@ bool gui_load_language_pack()
 		size_t tc = j["total_chars"];
 		langpack_lang = j["lang"];
 		langpack_charset = j["charset"];
-		if( !wf || !hf || !cb || !tc || !fontname.size() || !langpack_lang.size() || !langpack_charset.size() )
+		if( !wf || !hf || !cb || !tc || wf!=hf || !fontname.size() || !langpack_lang.size() || !langpack_charset.size() )
 			return false;
 		if( langpack_lang == "zh_CN" && langpack_charset == "GB2312" )
 			return load_zh_CN_GB2312_lang_pack(fontname, wf, hf, cb, tc);
@@ -314,13 +314,13 @@ void lang_DrawGB2312String( const char *cstr, uint32_t *screen, uint32_t x, uint
 	{
 		uint8_t c0 = str[i];
 		if( _isAscii(c0) ) {
-			lang_DisplayAsciiChar(Screen, c0, resW, x, y, LANG_SCREEN_W - x - (pixfont_width+1) / 2, RGBvalue);
+			lang_DisplayAsciiChar(Screen, c0, resW, x, y, LANG_SCREEN_W - x - 4, RGBvalue);
 			x += (pixfont_width+1) / 2;
 			Screen += (pixfont_width+1) / 2;
 		} else if( _isGB2312(c0) ) {
 			uint8_t c1 = str[++i];
 			if( _isGB2312(c1) ) {
-				lang_DisplayGB2312Char(Screen, c0, c1, resW, x, y, LANG_SCREEN_W - x - pixfont_width, RGBvalue);
+				lang_DisplayGB2312Char(Screen, c0, c1, resW, x, y, LANG_SCREEN_W - x - 4, RGBvalue);
 				x += pixfont_width;
 				Screen += pixfont_width;
 			} else // only half char, error stop
