@@ -128,6 +128,9 @@ void sdl_input_read(bool process_autofire) // called from do_keypad()
 		{
 		case SDL_JOYAXISMOTION:
 		{
+			if (keymap.use_analog == 0)
+				break;
+			
 			//process joystick
 			static const int joy_commit_range = 3200;
 			int axisval = event.jaxis.value;
@@ -150,7 +153,9 @@ void sdl_input_read(bool process_autofire) // called from do_keypad()
 					keypad |= KEYPAD_UP;
 			}
 			keystick = keypad;
+
 			break;
+
 		}
 		case SDL_KEYUP:
 			// FBA keypresses
@@ -174,6 +179,7 @@ void sdl_input_read(bool process_autofire) // called from do_keypad()
 			}
 			break;
 		case SDL_KEYDOWN:
+			printf("%d", event.key.keysym.sym);
 			// FBA keypresses
 			if (event.key.keysym.sym == keymap.up) keypad |= KEYPAD_UP;
 			else if (event.key.keysym.sym == keymap.down) keypad |= KEYPAD_DOWN;
@@ -255,8 +261,8 @@ void do_keypad()
 	if (keypad & KEYPAD_FIRE2) FBA_KEYPAD[0] |= KEYPAD_FIRE2;		// B
 	if (keypad & KEYPAD_FIRE3) FBA_KEYPAD[0] |= KEYPAD_FIRE3;		// X
 	if (keypad & KEYPAD_FIRE4) FBA_KEYPAD[0] |= KEYPAD_FIRE4;		// Y
-	if (keypad & KEYPAD_FIRE5) FBA_KEYPAD[0] |= KEYPAD_FIRE5;		// L
-	if (keypad & KEYPAD_FIRE6) FBA_KEYPAD[0] |= KEYPAD_FIRE6;		// R
+	if (keypad & KEYPAD_FIRE5) FBA_KEYPAD[0] |= KEYPAD_FIRE5;		// L1
+	if (keypad & KEYPAD_FIRE6) FBA_KEYPAD[0] |= KEYPAD_FIRE6;		// R1
 
 	// process non-redefinable keypresses
 	if (keypc & BUTTON_QT) {
@@ -354,8 +360,6 @@ void button_map_init() {
 	button_map[SDLK_BACKSPACE] = BUTTON_SR;
 	button_map[SDLK_ESCAPE] = BUTTON_SELECT;
 	button_map[SDLK_RETURN] = BUTTON_START;
-	button_map[SDLK_PAGEUP] = BUTTON_L2;
-	button_map[SDLK_PAGEDOWN] = BUTTON_R2;
 	button_map[SDLK_KP_DIVIDE] = BUTTON_L3;
 	button_map[SDLK_KP_PERIOD] = BUTTON_R3;
 	button_map[SDLK_q] = BUTTON_QT;

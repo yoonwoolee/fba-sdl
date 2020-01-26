@@ -22,6 +22,7 @@
 #ifndef _SDL_MENU_H_
 #define _SDL_MENU_H_
 
+
 void gui_Init();
 void gui_Run();
 void gui_Exit();

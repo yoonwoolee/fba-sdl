@@ -225,12 +225,16 @@ static void gui_SavePreview();
 
 /* data definitions */
 #ifdef GCW0_BTN_LAYOUT
-char *gui_KeyNames[] = {"A", "B", "Y", "X", "L", "R"};
+char *gui_KeyNames[] = {"A", "B", "Y", "X", "L1", "R1", "L2", "R2"};
 #else
-char *gui_KeyNames[] = {"A", "B", "X", "Y", "L", "R"};
+char *gui_KeyNames[] = {"A", "B", "X", "Y", "L1", "R1", "L2", "R2"};
 #endif
+char *gui_analogNames[] = {"use", "no"};
+int gui_analog = 0;
 int gui_KeyData[] = {0, 1, 2, 3, 4, 5};
-int gui_KeyValue[] = {SDLK_LCTRL, SDLK_LALT, SDLK_SPACE, SDLK_LSHIFT, SDLK_TAB, SDLK_BACKSPACE};
+int gui_KeyValue[] = {SDLK_LCTRL, SDLK_LALT, SDLK_SPACE, SDLK_LSHIFT, SDLK_TAB, SDLK_BACKSPACE, SDLK_RSHIFT, SDLK_RALT};
+int gui_KeyValue_other[] = {SDLK_LCTRL, SDLK_LALT, SDLK_SPACE, SDLK_LSHIFT, SDLK_TAB, SDLK_BACKSPACE, SDLK_PAGEUP, SDLK_PAGEDOWN};
+
 char *gui_SoundDrvNames[] = {"No sound", "LIBAO", "SDL mutex", "SDL"};
 char *gui_SoundSampleRates[] = {"11025", "16000", "22050", "32000", "44100"};
 char *gui_AutofireFpsNames[] = {"off", "6 fps", "10 fps", "16 fps", "30 fps"};
@@ -253,30 +257,31 @@ MENUITEM gui_MainMenuItems[] = {
 MENU gui_MainMenu = { 9, 0, (MENUITEM *)&gui_MainMenuItems };
 
 MENUITEM gui_KeyMenuItems[] = {
-	{(char *)"Fire 1   - ", &gui_KeyData[0], 5, (char **)&gui_KeyNames, NULL},
-	{(char *)"Fire 2   - ", &gui_KeyData[1], 5, (char **)&gui_KeyNames, NULL},
-	{(char *)"Fire 3   - ", &gui_KeyData[2], 5, (char **)&gui_KeyNames, NULL},
-	{(char *)"Fire 4   - ", &gui_KeyData[3], 5, (char **)&gui_KeyNames, NULL},
-	{(char *)"Fire 5   - ", &gui_KeyData[4], 5, (char **)&gui_KeyNames, NULL},
-	{(char *)"Fire 6   - ", &gui_KeyData[5], 5, (char **)&gui_KeyNames, NULL},
+	{(char *)"Fire 1   - ", &gui_KeyData[0], 7, (char **)&gui_KeyNames, NULL},
+	{(char *)"Fire 2   - ", &gui_KeyData[1], 7, (char **)&gui_KeyNames, NULL},
+	{(char *)"Fire 3   - ", &gui_KeyData[2], 7, (char **)&gui_KeyNames, NULL},
+	{(char *)"Fire 4   - ", &gui_KeyData[3], 7, (char **)&gui_KeyNames, NULL},
+	{(char *)"Fire 5   - ", &gui_KeyData[4], 7, (char **)&gui_KeyNames, NULL},
+	{(char *)"Fire 6   - ", &gui_KeyData[5], 7, (char **)&gui_KeyNames, NULL},
+	{(char *)"analog   - ", &gui_analog, 1, (char **)&gui_analogNames, NULL},
 	{NULL, NULL, 0, NULL, NULL}
 };
 
-MENU gui_KeyMenu = { 6, 0, (MENUITEM *)&gui_KeyMenuItems };
+MENU gui_KeyMenu = { 7, 0, (MENUITEM *)&gui_KeyMenuItems };
 
 MENUITEM gui_AutofireMenuItems[] = {
 	{(char *)"Autofire 1 fps - ", &gui_AutofireFpsData[0], 4, (char **)&gui_AutofireFpsNames, NULL},
-	{(char *)"Autofire 1 key - ", &gui_KeyData[0], 5, (char **)&gui_KeyNames, NULL},
+	{(char *)"Autofire 1 key - ", &gui_KeyData[0], 7, (char **)&gui_KeyNames, NULL},
 	{(char *)"Autofire 2 fps - ", &gui_AutofireFpsData[1], 4, (char **)&gui_AutofireFpsNames, NULL},
-	{(char *)"Autofire 2 key - ", &gui_KeyData[1], 5, (char **)&gui_KeyNames, NULL},
+	{(char *)"Autofire 2 key - ", &gui_KeyData[1], 7, (char **)&gui_KeyNames, NULL},
 	{(char *)"Autofire 3 fps - ", &gui_AutofireFpsData[2], 4, (char **)&gui_AutofireFpsNames, NULL},
-	{(char *)"Autofire 3 key - ", &gui_KeyData[2], 5, (char **)&gui_KeyNames, NULL},
+	{(char *)"Autofire 3 key - ", &gui_KeyData[2], 7, (char **)&gui_KeyNames, NULL},
 	{(char *)"Autofire 4 fps - ", &gui_AutofireFpsData[3], 4, (char **)&gui_AutofireFpsNames, NULL},
-	{(char *)"Autofire 4 key - ", &gui_KeyData[3], 5, (char **)&gui_KeyNames, NULL},
+	{(char *)"Autofire 4 key - ", &gui_KeyData[3], 7, (char **)&gui_KeyNames, NULL},
 	{(char *)"Autofire 5 fps - ", &gui_AutofireFpsData[4], 4, (char **)&gui_AutofireFpsNames, NULL},
-	{(char *)"Autofire 5 key - ", &gui_KeyData[4], 5, (char **)&gui_KeyNames, NULL},
+	{(char *)"Autofire 5 key - ", &gui_KeyData[4], 7, (char **)&gui_KeyNames, NULL},
 	{(char *)"Autofire 6 fps - ", &gui_AutofireFpsData[5], 4, (char **)&gui_AutofireFpsNames, NULL},
-	{(char *)"Autofire 6 key - ", &gui_KeyData[5], 5, (char **)&gui_KeyNames, NULL},
+	{(char *)"Autofire 6 key - ", &gui_KeyData[5], 7, (char **)&gui_KeyNames, NULL},
 	{NULL, NULL, 0, NULL, NULL}
 };
 
@@ -353,7 +358,7 @@ void ShowMenuItem(int x, int y, MENUITEM *m, int fg_color)
 void ShowHeader()
 {
 	DrawString("Press B to return to game", COLOR_HELP_TEXT, COLOR_BG, 56, 220);
-	DrawString("FinalBurn Alpha for OpenDingux/RG350", COLOR_HELP_TEXT, COLOR_BG, 16, 2);
+	DrawString("FinalBurn Alpha for OpenDingux", COLOR_HELP_TEXT, COLOR_BG, 16, 2);
 	DrawString("Based on FBA " VERSION " (c) Team FB Alpha", COLOR_HELP_TEXT, COLOR_BG, 0, 12);
 }
 
@@ -438,33 +443,53 @@ static void gui_KeyMenuRun()
 {
 	// key decode
 	int *key = &keymap.fire1;
-	for(int i = 0; i < 6; key++, i++)
-		for(int j = 0; j < 6; j++) if(gui_KeyValue[j] == *key) gui_KeyData[i] = j;
+	int *gui_KeyValues = 0;
+	if (keymap.is_pocketgo)
+	{
+		gui_KeyValues = gui_KeyValue;
+	}else
+	{
+		gui_KeyValues = gui_KeyValue_other;
+	}
 
+	for(int i = 0; i < 6; key++, i++)
+		for(int j = 0; j < 8; j++) if(gui_KeyValues[j] == *key) gui_KeyData[i] = j;
+	gui_analog = !keymap.use_analog;
+	
 	gui_MenuRun(&gui_KeyMenu);
 
 	// key encode
 	key = &keymap.fire1;
 	for(int i = 0; i < 6; key++, i++)
-		*key = gui_KeyValue[gui_KeyData[i]];
+		*key = gui_KeyValues[gui_KeyData[i]];
+	keymap.use_analog = !gui_analog;
 }
 
 static void gui_AutofireMenuRun()
 {
+	int *gui_KeyValues = 0;
+	if (keymap.is_pocketgo)
+	{
+		gui_KeyValues = gui_KeyValue;
+	}else
+	{
+		gui_KeyValues = gui_KeyValue_other;
+	}
+
 	// key decode
 	CFG_AUTOFIRE_KEY *af = &autofire.fire1;
 	for(int i = 0; i < 6; af++, i++) {
 		for(int j = 0; j < 5; j++) if(gui_AutofireFpsValue[j] == af->fps) gui_AutofireFpsData[i] = j;
-		for(int j = 0; j < 6; j++) if(gui_KeyValue[j] == af->key) gui_KeyData[i] = j;
+		for(int j = 0; j < 8; j++) if(gui_KeyValues[j] == af->key) gui_KeyData[i] = j;
 	}
 
 	gui_MenuRun(&gui_AutofireMenu);
 
 	// key encode
 	af = &autofire.fire1;
-	for(int i = 0; i < 6; af++, i++) {
+	for(int i = 0; i < 5; af++, i++) {
 		af->fps = gui_AutofireFpsValue[gui_AutofireFpsData[i]];
-		af->key = gui_KeyValue[gui_KeyData[i]];
+		af->key = gui_KeyValues[gui_KeyData[i]];
 	}
 	sdl_autofire_init();
 }
@@ -937,3 +962,4 @@ unsigned char gui_font[2048] =
 	0x76, 0xDC, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,	// Char 126 (~)
 	0x00, 0x10, 0x38, 0x6C, 0xC6, 0xC6, 0xFE, 0x00	// Char 127 (.)
 };
+

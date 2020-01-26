@@ -33,6 +33,7 @@
 
 #include "burner.h"
 #include "sdl_run.h"
+#include "sdl_menu.h"
 #include "gui_main.h"
 #include "gui_gfx.h"
 #include "gui_romlist.h"
@@ -318,7 +319,7 @@ char ss_prg_credit(void)
 
 	put_string("CREDIT", 142, CREDIT_Y + 8, BLANC, credit);
 	put_string("Final Burn Alpha v" VERSION, CREDIT_X + 8, CREDIT_Y + 24, BLEU, credit);
-	put_string("for OpenDingux/RG350", CREDIT_X + 28, CREDIT_Y + 34, BLEU, credit);
+	put_string("for OpenDingux", CREDIT_X + 28, CREDIT_Y + 34, BLEU, credit);
 	put_string("Frontend is based on Capex", CREDIT_X + 8, CREDIT_Y + 54, VERT, credit);
 	put_string("by JyCet and Juanvvc", CREDIT_X + 32, CREDIT_Y + 64, VERT, credit);
 	put_string("Skin by HiBan", CREDIT_X + 56, CREDIT_Y + 88, VERT, credit);
@@ -330,7 +331,12 @@ char ss_prg_credit(void)
 		drawSprite( credit , gui_screen , 0 , 0 , 0 , 0 , 320 , 240 );
 		redraw_screen();
 
-		SDL_PollEvent(&event);
+                do
+                {
+                        event.type = 0;
+                        SDL_PollEvent(&event);
+                }while(event.type != SDL_KEYDOWN && event.type != SDL_KEYUP);
+
 		if(event.type == SDL_KEYDOWN) {
 			if(compteur == 0 || (compteur > cfg.delayspeed && ((compteur & joy_speed[cfg.repeatspeed]) == 0))) {
 				if(event.key.keysym.sym == SDLK_ESCAPE ) {
@@ -405,8 +411,11 @@ void ss_prg_help(void)
 	while(!Hquit) {
 		drawSprite(help, gui_screen, 0, 0, 0, 0, 320, 240);
 		redraw_screen();
-
-		SDL_PollEvent(&event);
+                do
+                {
+                        event.type = 0;
+                        SDL_PollEvent(&event);
+                }while(event.type != SDL_KEYDOWN && event.type != SDL_KEYUP);
 		if (event.type==SDL_KEYDOWN){
 			//if (compteur==0 || (compteur>cfg.delayspeed && ((compteur&joy_speed[cfg.repeatspeed])==0))){
 				//if ( event.key.keysym.sym==SDLK_A ){
@@ -614,6 +623,10 @@ void gui_menu_key_init()
 	gui_menu_key_values.push_back(SDLK_LSHIFT);
 	gui_menu_key_values.push_back(SDLK_TAB);
 	gui_menu_key_values.push_back(SDLK_BACKSPACE);
+	gui_menu_key_values.push_back(SDLK_RSHIFT);
+	gui_menu_key_values.push_back(SDLK_RALT);
+	gui_menu_key_values.push_back(SDLK_PAGEUP);
+	gui_menu_key_values.push_back(SDLK_PAGEDOWN);
 	gui_menu_key_labels[SDLK_LCTRL]     = "A";
 	gui_menu_key_labels[SDLK_LALT]      = "B";
 #ifdef GCW0_BTN_LAYOUT
@@ -623,8 +636,12 @@ void gui_menu_key_init()
 	gui_menu_key_labels[SDLK_SPACE]     = "X";
 	gui_menu_key_labels[SDLK_LSHIFT]    = "Y";
 #endif
-	gui_menu_key_labels[SDLK_TAB]       = "L";
-	gui_menu_key_labels[SDLK_BACKSPACE] = "R";
+	gui_menu_key_labels[SDLK_TAB]       = "L1";
+	gui_menu_key_labels[SDLK_BACKSPACE] = "R1";
+	gui_menu_key_labels[SDLK_RSHIFT]       = "L2";
+	gui_menu_key_labels[SDLK_RALT]       = "R2";
+	gui_menu_key_labels[SDLK_PAGEUP]     = "L2";
+	gui_menu_key_labels[SDLK_PAGEDOWN]   = "R2";
 }
 void gui_menu_fps_init()
 {
@@ -808,6 +825,16 @@ void put_option_line(int first, unsigned char num, unsigned char y)
 			put_string( g_string , OPTIONS_START_X , y , BLANC , gui_screen );
 		}
 		break;
+	case OPTION_GUI_DEF_KEY_ANALOG:
+		sprintf((char*)g_string, "Analogue  : %s", (keymap.use_analog == 1 ? "use": "no"));
+		put_string( g_string , OPTIONS_START_X , y , BLANC , gui_screen );
+		break;
+
+	case OPTION_GUI_DEF_IS_POCKETGO:
+		sprintf((char*)g_string, "pocketgo  : %s", (keymap.is_pocketgo == 1 ? "yes": "no"));
+		put_string( g_string , OPTIONS_START_X , y , BLANC , gui_screen );
+		break;
+		
 	case OPTION_GUI_DEF_KEY_RETURN:
 		sprintf((char*)g_string, "Return back");
 		put_string( g_string , OPTIONS_START_X , y , BLANC , gui_screen );
@@ -933,8 +960,12 @@ void ss_prg_options(int first, int last)
 		}
 
 		redraw_screen();
+                do
+                {
+                        event.type = 0;
+                        SDL_PollEvent(&event);
+                }while(event.type != SDL_KEYDOWN && event.type != SDL_KEYUP);
 
-		SDL_PollEvent(&event);
 		if(event.type == SDL_KEYDOWN) {
 			if(compteur == 0 || (compteur > cfg.delayspeed && ((compteur & joy_speed[cfg.repeatspeed]) == 0))) {
 				if(event.key.keysym.sym == SDLK_DOWN) {
@@ -1032,6 +1063,12 @@ void ss_prg_options(int first, int last)
 								int * val = &keymap.fire1 + idx;
 								*val = gui_menu_get_prev(gui_menu_key_values, *val);
 							}
+							break;
+						case OPTION_GUI_DEF_KEY_ANALOG:
+							keymap.use_analog = 1;
+							break;
+						case OPTION_GUI_DEF_IS_POCKETGO:
+							keymap.is_pocketgo = 1;
 							break;
 						case OPTION_GUI_DEF_AF_FPS1:
 						case OPTION_GUI_DEF_AF_FPS2:
@@ -1138,6 +1175,12 @@ void ss_prg_options(int first, int last)
 								int * val = &keymap.fire1 + idx;
 								*val = gui_menu_get_next(gui_menu_key_values, *val);
 							}
+							break;
+						case OPTION_GUI_DEF_KEY_ANALOG:
+							keymap.use_analog = 0;
+							break;
+						case OPTION_GUI_DEF_IS_POCKETGO:
+							keymap.is_pocketgo = 0;
 							break;
 						case OPTION_GUI_DEF_AF_FPS1:
 						case OPTION_GUI_DEF_AF_FPS2:
@@ -1418,7 +1461,12 @@ void ss_prog_run(void)
 
 		redraw_screen();
 
-		SDL_PollEvent(&event);
+                do
+                {
+                        event.type = 0;
+                        SDL_PollEvent(&event);
+                }while(event.type != SDL_KEYDOWN && event.type != SDL_KEYUP);
+
 		if(event.type == SDL_KEYDOWN) {
 			if(compteur == 0 || (compteur > cfg.delayspeed && ((compteur & joy_speed[cfg.repeatspeed]) == 0))) {
 				if(event.key.keysym.sym == SDLK_DOWN) {
@@ -1669,8 +1717,13 @@ void gui_menu_main()
 		}
 
 		redraw_screen();
+		
+		do 
+		{
+			event.type = 0;
+			SDL_PollEvent(&event);
+		}while(event.type != SDL_KEYDOWN && event.type != SDL_KEYUP);
 
-		SDL_PollEvent(&event);
 		if(event.type == SDL_KEYDOWN) {
 			if(compteur == 0 || (compteur > cfg.delayspeed && ((compteur & joy_speed[cfg.repeatspeed]) == 0))) {
 				if((event.key.keysym.sym >= SDLK_a) && (event.key.keysym.sym <= SDLK_z) &&
@@ -1954,5 +2007,6 @@ void GuiRun()
 
 	exit_prog();
 }
+
 
 /*EOF*/

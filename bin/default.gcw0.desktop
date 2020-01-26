@@ -1,6 +1,6 @@
 [Desktop Entry]
-Name=FBA-RG350
-Comment=Arcade machine emulator
+Name=FBA (OPTION L2 R2)
+Comment=Final Burn Alpha (OPTION Analog L2 R2) 
 Exec=fbasdl.dge
 Terminal=false
 Type=Application

@@ -179,14 +179,16 @@ void ConfigGameDefault()
 	keymap.fire2 = SDLK_LALT;	// B
 	keymap.fire3 = SDLK_SPACE;	// X
 	keymap.fire4 = SDLK_LCTRL;	// A
-	keymap.fire5 = SDLK_TAB;	// L
-	keymap.fire6 = SDLK_BACKSPACE;	// R
+	keymap.fire5 = SDLK_TAB;	// L1
+	keymap.fire6 = SDLK_BACKSPACE;	// R1
 	keymap.coin1 = SDLK_ESCAPE;	// SELECT
 	keymap.start1 = SDLK_RETURN;	// START
 	keymap.pause = SDLK_p;
 	keymap.quit = SDLK_q;
 	keymap.qsave = SDLK_s;		// quick save
 	keymap.qload = SDLK_l;		// quick load
+	keymap.use_analog = 1;
+	keymap.is_pocketgo = 0;
 
 	autofire.fire1.fps = 0;
 	autofire.fire1.key = keymap.fire1;
@@ -212,6 +214,28 @@ int ConfigGameLoad(FILE * f)
 		sscanf(line, "%s %d", &arg1, &argd);
 
 		if(strcmp(arg1, "#") != 0) {
+			if(keymap.is_pocketgo == 1)
+			{
+				if (SDLK_PAGEUP == argd)
+				{
+					argd = SDLK_RSHIFT;
+				}
+				if (SDLK_PAGEDOWN == argd)
+				{
+					argd = SDLK_RALT;
+				}
+			}else
+			{
+				if (SDLK_RSHIFT == argd)
+				{
+					argd = SDLK_PAGEUP;
+				}
+				if (SDLK_RALT == argd)
+				{
+					argd = SDLK_PAGEDOWN;
+				}
+
+			}
 			if(strcmp(arg1, "FBA_SOUND") == 0) options.sound = argd;
 			if(strcmp(arg1, "FBA_SAMPLERATE") == 0) options.samplerate = argd;
 			if(strcmp(arg1, "FBA_VSYNC") == 0) options.vsync = argd;
@@ -238,6 +262,7 @@ int ConfigGameLoad(FILE * f)
 			if(strcmp(arg1, "KEY_FIRE6") == 0) keymap.fire6 = argd;
 			if(strcmp(arg1, "KEY_QUIT") == 0) keymap.quit = argd;
 			if(strcmp(arg1, "KEY_PAUSE") == 0) keymap.pause = argd;
+			if(strcmp(arg1, "USE_ANALOG") == 0) keymap.use_analog = argd;
 
 			if(strcmp(arg1, "AUTO_FIRE1_FPS") == 0) autofire.fire1.fps = argd;
 			if(strcmp(arg1, "AUTO_FIRE1_KEY") == 0) autofire.fire1.key = argd;
@@ -251,6 +276,10 @@ int ConfigGameLoad(FILE * f)
 			if(strcmp(arg1, "AUTO_FIRE5_KEY") == 0) autofire.fire5.key = argd;
 			if(strcmp(arg1, "AUTO_FIRE6_FPS") == 0) autofire.fire6.fps = argd;
 			if(strcmp(arg1, "AUTO_FIRE6_KEY") == 0) autofire.fire6.key = argd;
+		}
+		else if(strncmp(line, "# POCKETGO", 10) == 0)
+		{
+			keymap.is_pocketgo = 1;
 		}
 	}
 
@@ -296,10 +325,17 @@ int ConfigGameLoadDefault()
 	return ret;
 }
 
-int ConfigGameSave(FILE * fp)
+int ConfigGameSave(FILE * fp, bool is_default)
 {
 	fprintf(fp, "# FBA config file\n");
-	fprintf(fp, "# %s\n\n", BurnDrvGetTextA(DRV_NAME));
+	if (is_default)
+	{
+		if (keymap.is_pocketgo)
+			fprintf(fp, "# POCKETGO\n");
+	}else
+	{
+		fprintf(fp, "# %s\n\n", BurnDrvGetTextA(DRV_NAME));
+	}
 
 	fprintf(fp, "FBA_SOUND %d\n", options.sound);
 	fprintf(fp, "FBA_SAMPLERATE %d\n", options.samplerate);
@@ -328,6 +364,7 @@ int ConfigGameSave(FILE * fp)
 	fprintf(fp, "KEY_FIRE6 %d\n", keymap.fire6);
 	fprintf(fp, "KEY_QUIT %d\n", keymap.quit);
 	fprintf(fp, "KEY_PAUSE %d\n", keymap.pause);
+	fprintf(fp, "USE_ANALOG %d\n", keymap.use_analog);
 
 	fprintf(fp, "AUTO_FIRE1_FPS %d\n", autofire.fire1.fps);
 	fprintf(fp, "AUTO_FIRE1_KEY %d\n", autofire.fire1.key);
@@ -353,7 +390,7 @@ int ConfigGameSave()
 	sprintf((char*)cfgname, "%s/%s.cfg", szAppConfigPath, BurnDrvGetTextA(DRV_NAME));
 	fp = fopen(cfgname, "w");
 	printf("ConfigGameSave:%s\n",cfgname);
-	int ret = ConfigGameSave(fp);
+	int ret = ConfigGameSave(fp, false);
 
 	fclose(fp);
 	return ret;
@@ -367,7 +404,7 @@ int ConfigGameSaveDefault()
 	sprintf((char*)cfgname, "%s/default.cfg", szAppHomePath);
 	fp = fopen(cfgname, "w");
 	printf("ConfigGameSaveDefault:%s\n",cfgname);
-	int ret = ConfigGameSave(fp);
+	int ret = ConfigGameSave(fp, true);
 	
 	fclose(fp);
 	return ret;

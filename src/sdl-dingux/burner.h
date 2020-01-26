@@ -169,6 +169,8 @@ typedef struct
 	int quit;
 	int qsave;
 	int qload;
+	int use_analog;
+	int is_pocketgo;
 } CFG_KEYMAP;
 
 typedef struct
