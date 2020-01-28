@@ -67,7 +67,7 @@ unsigned int GetTicks (void)
 	return ticks;
 }
 
-void RunEmulator(int drvnum)
+void RunEmulator(int drvnum, int saveSlot)
 {
 	extern int nSekCpuCore; // 0 - c68k, 1 - m68k, 2 - a68k
 	nSekCpuCore = options.m68kcore;
@@ -122,6 +122,8 @@ void RunEmulator(int drvnum)
 	printf ("Let's go!\n");
 
 	VideoClear();
+	if (saveSlot != -1)
+		StatedLoad(saveSlot);
 
 #ifdef FBA_DEBUG
 	gui_RunDebug();

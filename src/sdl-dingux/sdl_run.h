@@ -24,6 +24,6 @@
 
 extern bool GameLooping;
 
-void RunEmulator(int drvnum);
+void RunEmulator(int drvnum, int saveSlot = -1);
 
 #endif	// _SDL_RUN_H_

@@ -214,27 +214,34 @@ int ConfigGameLoad(FILE * f)
 		sscanf(line, "%s %d", &arg1, &argd);
 
 		if(strcmp(arg1, "#") != 0) {
-			if(keymap.is_pocketgo == 1)
+			int arg1_len = strlen(arg1);
+			if(arg1_len == 0)
+				continue;
+			if (strncmp(arg1, "KEY_FIRE", 8) == 0 || 
+				(strncmp(arg1, "AUTO_FIRE", 9) == 0 && arg1[arg1_len - 1]!= 'S'))
 			{
-				if (SDLK_PAGEUP == argd)
+				if(keymap.is_pocketgo == 1)
 				{
-					argd = SDLK_RSHIFT;
-				}
-				if (SDLK_PAGEDOWN == argd)
+					if (SDLK_PAGEUP == argd)
+					{
+						argd = SDLK_RSHIFT;
+					}
+					if (SDLK_PAGEDOWN == argd)
+					{
+						argd = SDLK_RALT;
+					}
+				}else
 				{
-					argd = SDLK_RALT;
-				}
-			}else
-			{
-				if (SDLK_RSHIFT == argd)
-				{
-					argd = SDLK_PAGEUP;
-				}
-				if (SDLK_RALT == argd)
-				{
-					argd = SDLK_PAGEDOWN;
-				}
+					if (SDLK_RSHIFT == argd)
+					{
+						argd = SDLK_PAGEUP;
+					}
+					if (SDLK_RALT == argd)
+					{
+						argd = SDLK_PAGEDOWN;
+					}
 
+				}
 			}
 			if(strcmp(arg1, "FBA_SOUND") == 0) options.sound = argd;
 			if(strcmp(arg1, "FBA_SAMPLERATE") == 0) options.samplerate = argd;

@@ -91,6 +91,8 @@ static char *abreviation_cf[11][7]={
 	{"Off","Aspect","Fullscr","","","",""}
 };
 
+static int option_run = 0;
+
 void load_lastsel();
 void save_lastsel();
 
@@ -232,23 +234,49 @@ void put_stringM(char *string, unsigned int pos_x, unsigned int pos_y, unsigned 
 	put_string( text , CREDIT_X+8 , CREDIT_Y+24 , BLEU , credit );
 }*/
 int last_numero = -1;
+int last_saveSlotNumber = -2;
 
-void load_preview(unsigned int numero)
+void load_preview(unsigned int numero, int saveSlotNumber = -1)
 {
 	if (romlist.nb_list[cfg.list] == 0) {
 		flag_preview = 0;
 		return;
 	}
 	if(preview) {
-		if(last_numero==numero)
+		if(last_saveSlotNumber == saveSlotNumber && last_numero==numero)
 			return;
 		SDL_FreeSurface(preview);
 		preview = NULL;
 	}
+	last_saveSlotNumber = saveSlotNumber;
 	last_numero = numero;
 
 	char *ext[2] = {"png", "bmp"};
 	FILE *fp;
+
+	if (saveSlotNumber != -1)
+	{
+		sprintf((char*)g_string, "%s/%s%ip.png", szAppSavePath, ROMLIST(zip, numero), saveSlotNumber);
+		if((preview = IMG_Load(g_string)) != NULL) {
+			drawSprite(bg, bg_temp, 124, 3, 124, 3, 192, 112);
+			drawSprite(preview, bg_temp, 0, 0, 220 - preview->w / 2, 3, 192, 112);
+
+			flag_preview = 1;
+		}else
+		{
+			flag_preview = 0;
+		}
+		if (saveSlotNumber == 10)
+		{
+			sprintf((char*)g_string, "START AutoSave", saveSlotNumber);
+		}else
+		{
+			sprintf((char*)g_string, "START SaveState %i", saveSlotNumber);
+		}
+		put_string(g_string, 181, 59, ROUGE, bg_temp);
+
+		return;
+	}
 
 	for(int i = 0; i < 2; i++) {
 		sprintf((char*)g_string, "%s/%s.%s", szAppPreviewPath, ROMLIST(zip, numero), ext[i]);
@@ -1362,6 +1390,13 @@ void put_run_option_line(unsigned char num, unsigned char y)
 	switch (num) {
 	case OPTION_FBA_RUN:
 		put_string("Run game", OPTIONS_START_X, y, BLANC, gui_screen);
+		if (option_run == 10)
+			sprintf((char*)g_string, "Auto");
+		else if (option_run == -1)
+			sprintf((char*)g_string, "New");
+		else
+			sprintf((char*)g_string, "Save %i", option_run);
+		put_string(g_string, CONF_START_X, y, VERT, gui_screen);
 		break;
 	case OPTION_FBA_SOUND:
 		put_string( "Sound" , OPTIONS_START_X , y , BLANC , gui_screen );
@@ -1420,6 +1455,32 @@ void ss_prog_run(void)
 	
 	int opt_first = 0, opt_last = (sizeof(run_options_static) / sizeof(int)) - 2;
 	int run_options[opt_last + 1];
+
+	char saveStateFilePath[MAX_PATH];
+
+	int existSlotNumbers[12] = {-1,};
+	int existSlotNumbersSize = 0;
+	int existSlotNumbersSelIndex = 0;
+
+	for (int i = 0; i < 11; i++)
+	{
+		sprintf(saveStateFilePath, "%s/%s%i.sav", szAppSavePath, ROMLIST(zip, sel.rom), i);
+		if( access(saveStateFilePath, F_OK) == 0)
+		{
+			existSlotNumbers[existSlotNumbersSize++] = i; 
+		}
+
+	}
+
+	option_run = existSlotNumbers[existSlotNumbersSize++] = -1;
+	existSlotNumbersSelIndex = existSlotNumbersSize - 1;
+	if (existSlotNumbersSize != 1 && existSlotNumbers[existSlotNumbersSize-2] == 10)
+	{
+		existSlotNumbersSelIndex = existSlotNumbersSize - 2;
+		option_run = existSlotNumbers[existSlotNumbersSelIndex];
+		load_preview(sel.rom, 10);
+	}
+
 	memcpy(run_options, run_options_static, sizeof(int) * (opt_last + 1));
 	if (!bVertical) {
 		opt_last--;
@@ -1491,6 +1552,15 @@ void ss_prog_run(void)
 					}
 				} else if (event.key.keysym.sym == SDLK_LEFT) {
 					switch(run_options[run_num]) {
+						case OPTION_FBA_RUN:
+							existSlotNumbersSelIndex--;
+							if (existSlotNumbersSelIndex == -1) 
+							{
+								existSlotNumbersSelIndex = existSlotNumbersSize -1;
+							}
+							option_run = existSlotNumbers[existSlotNumbersSelIndex];
+							load_preview(sel.rom, option_run);
+							break;
 						case OPTION_FBA_SOUND:
 							options.sound--;
 							if(options.sound < 0) options.sound = 3;
@@ -1535,6 +1605,15 @@ void ss_prog_run(void)
 					}
 				} else if (event.key.keysym.sym == SDLK_RIGHT) {
 					switch(run_options[run_num]) {
+						case OPTION_FBA_RUN:
+							existSlotNumbersSelIndex++;
+							if (existSlotNumbersSelIndex >= existSlotNumbersSize) 
+							{
+								existSlotNumbersSelIndex = 0;
+							}
+							option_run = existSlotNumbers[existSlotNumbersSelIndex];
+							load_preview(sel.rom, option_run);
+							break;
 						case OPTION_FBA_SOUND:
 							options.sound++;
 							if(options.sound > 3) options.sound = 0;
@@ -1586,7 +1665,8 @@ void ss_prog_run(void)
 					SDL_QuitSubSystem(SDL_INIT_VIDEO);
 
 					// run emulator here
-					RunEmulator(nBurnDrvActive);
+					RunEmulator(nBurnDrvActive, option_run);
+						
 
 					if(!(SDL_WasInit(SDL_INIT_VIDEO) & SDL_INIT_VIDEO)) {
 						SDL_InitSubSystem(SDL_INIT_VIDEO);

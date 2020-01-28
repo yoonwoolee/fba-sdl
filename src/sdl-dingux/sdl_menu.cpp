@@ -570,7 +570,7 @@ static void gui_SavePreview()
 	if( access(pv_path, R_OK) )
 		return;
 	// load new preview
-	extern void load_preview(unsigned int numero);
+	extern void load_preview(unsigned int numero, int saveSlotNumber = -1);
 	extern int last_numero;
 	int n = last_numero;
 	last_numero = -1;

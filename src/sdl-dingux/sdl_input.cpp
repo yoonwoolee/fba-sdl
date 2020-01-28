@@ -208,6 +208,7 @@ void sdl_input_read(bool process_autofire) // called from do_keypad()
 	}
 }
 
+extern void save_state_preview(bool,bool);
 void do_keypad()
 {
 	int bVert = !options.rotate && (BurnDrvGetFlags() & BDF_ORIENTATION_VERTICAL);
@@ -308,7 +309,6 @@ void do_keypad()
 			keypc &= ~BUTTON_Y;
 		} else if (keypc & BUTTON_B && !bRunPause) {
 			StatedSave(nSavestateSlot);
-			extern void save_state_preview(bool,bool);
 			save_state_preview(true,false);
 			keypc &= ~BUTTON_B;
 		} else if (keypc & BUTTON_A && !bRunPause) {
@@ -316,8 +316,13 @@ void do_keypad()
 			keypc &= ~BUTTON_A;
 			bRunPause = 0;
 		} else if (keypc & BUTTON_START) {
+			int beforeNSavesStateSlot = nSavestateSlot;
 			keypc = keypad = 0;
 			SndPause(1);
+			StatedSave(10);
+			nSavestateSlot = 10;
+			save_state_preview(true,true);
+			nSavestateSlot = beforeNSavesStateSlot; 
 			gui_Run();
 			SndPause(0);
 		} else if (keypc & BUTTON_SELECT) DiagRequest = 1;

@@ -1,6 +1,6 @@
 [Desktop Entry]
-Name=FBA (OPTION L2 R2)
-Comment=Final Burn Alpha (OPTION Analog L2 R2) 
+Name=FBA 000
+Comment=Final Burn Alpha 000
 Exec=fbasdl.dge
 Terminal=false
 Type=Application
